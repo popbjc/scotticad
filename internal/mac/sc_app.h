@@ -6,7 +6,7 @@
 //
 // It has three layers:
 //
-//   - the host: sc_run/sc_end/sc_set_title and the window/event plumbing;
+//   - the host: sc_start/sc_runloop/sc_end and the window/event plumbing;
 //   - the system services the window layer needs: clipboard, cursor, icon,
 //     drag and drop, and the file/message dialogs;
 //   - the Metal backend the renderers draw through: programs, buffers,

@@ -694,15 +694,15 @@ func (a *App) drawConsoleHeader(r render.Rect) {
 	if c.script {
 		btns = append(btns,
 			cbtn{id: "con-saveas", label: "Save as…", click: func() { a.saveScript(true) }},
-			cbtn{id: "con-save", label: "Save", tip: "Ctrl + S", click: func() { a.saveScript(false) }},
-			cbtn{id: "con-open", label: "Open…", tip: "Ctrl + O", click: func() { a.openScript() }},
+			cbtn{id: "con-save", label: "Save", tip: "⌘ + S", click: func() { a.saveScript(false) }},
+			cbtn{id: "con-open", label: "Open…", tip: "⌘ + O", click: func() { a.openScript() }},
 			cbtn{id: "con-new", label: "New", click: a.newScript},
 		)
 	}
 	if c.running {
-		btns = append(btns, cbtn{id: "con-stop", label: "Stop", tip: "Stop the script (Ctrl + C)", click: a.stopScript, primary: true})
+		btns = append(btns, cbtn{id: "con-stop", label: "Stop", tip: "Stop the script (⌘ + C)", click: a.stopScript, primary: true})
 	} else if c.script {
-		btns = append(btns, cbtn{id: "con-run", label: "Run", tip: "Run the script (F5 or Ctrl + Enter)", click: a.runEditor, primary: true})
+		btns = append(btns, cbtn{id: "con-run", label: "Run", tip: "Run the script (F5 or ⌘ + Enter)", click: a.runEditor, primary: true})
 	}
 	bx := r.X + r.W - 8
 	for _, t := range btns {

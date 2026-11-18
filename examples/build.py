@@ -3,15 +3,14 @@ design each one makes in examples/scotticad, under the script's name
 (coasters.star -> coasters.scotticad), replacing the old one. The original
 designs there, made by hand with no script, are left as they are.
 
-    make examples                      (Linux: builds ScottiCAD first)
-    python examples/build.py           (any platform, after building)
+    make examples                      (macOS: builds ScottiCAD first)
+    python examples/build.py           (macOS, after building)
     python examples/build.py OUTDIR    (the designs somewhere else)
 
-It drives the ScottiCAD built at the top of the repository, or the one
-SCOTTICAD_EXE names, through the automation API, in a hidden window (on
-Linux that still needs an X display; make examples uses xvfb-run when it is
-installed). A script that fails is reported and its design not saved, and
-the run ends with an error; the other scripts still run.
+It drives the macOS ScottiCAD built at the top of the repository, or the
+one SCOTTICAD_EXE names, through the automation API in a hidden window. A
+script that fails is reported and its design not saved, and the run ends
+with an error; the other scripts still run.
 """
 import glob
 import os

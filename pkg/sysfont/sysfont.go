@@ -1,6 +1,5 @@
-// Package sysfont finds font files installed on the system: in the Windows
-// Fonts folder, or in the usual Linux font folders (searched recursively,
-// as Linux keeps fonts in subfolders).
+// Package sysfont finds installed fonts in the platform's standard font
+// folders.
 package sysfont
 
 import (
@@ -21,6 +20,18 @@ func Dirs() []string {
 			w = `C:\Windows`
 		}
 		return []string{filepath.Join(w, "Fonts")}
+	}
+	if runtime.GOOS == "darwin" {
+		var dirs []string
+		if home, err := os.UserHomeDir(); err == nil && home != "" {
+			dirs = append(dirs, filepath.Join(home, "Library", "Fonts"))
+		}
+		dirs = append(dirs,
+			"/Library/Fonts",
+			"/System/Library/Fonts",
+			"/System/Library/Fonts/Supplemental",
+		)
+		return dirs
 	}
 	var dirs []string
 	home, _ := os.UserHomeDir()

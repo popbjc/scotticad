@@ -1,4 +1,4 @@
-// Package render draws ScottiCAD's 3D scene and 2D interface with OpenGL.
+// Package render draws ScottiCAD's 3D scene and 2D interface with Metal.
 package render
 
 import (

@@ -10,10 +10,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/scotticad/scotticad/internal/mac"
 	"github.com/scotticad/scotticad/pkg/doc"
 	"github.com/scotticad/scotticad/pkg/editor"
 	"github.com/scotticad/scotticad/pkg/geom"
-	"github.com/scotticad/scotticad/pkg/gl"
 	"github.com/scotticad/scotticad/pkg/render"
 	"github.com/scotticad/scotticad/pkg/window"
 )
@@ -254,10 +254,6 @@ func New(o Options) (*App, error) {
 	if !o.Headless {
 		w.OnPanic = a.emergencySave // a crash saves the design first
 	}
-	if err := gl.Init(); err != nil {
-		return nil, err
-	}
-	gl.SwapInterval(1)
 	if a.scene, err = render.NewScene(); err != nil {
 		return nil, err
 	}
@@ -265,8 +261,8 @@ func New(o Options) (*App, error) {
 		return nil, err
 	}
 	samples := int32(8)
-	if max := gl.GetInteger(gl.MAX_SAMPLES); max < samples {
-		samples = max
+	if max := mac.TargetMaxSamples(); max < int(samples) {
+		samples = int32(max)
 	}
 	a.target = render.NewTarget(samples)
 	a.ed.Changed = a.onChanged
@@ -1049,6 +1045,10 @@ func (a *App) Frame() {
 	if a.scene == nil || a.batch == nil {
 		return
 	}
+	if !mac.FrameBegin() {
+		return
+	}
+	defer mac.FrameEnd()
 	a.frames++
 	a.layout()
 	if a.thumbGen != a.batch.Generation || a.thumbDPI != a.w.DPI {
@@ -1086,12 +1086,12 @@ func (a *App) Frame() {
 	dw, dh := int32(a.w.W), int32(a.w.H)
 	a.target.Resize(dw, dh)
 	a.target.Bind()
-	gl.ClearColor(a.bgColor[0], a.bgColor[1], a.bgColor[2], 1)
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+	mac.ClearColor(float64(a.bgColor[0]), float64(a.bgColor[1]), float64(a.bgColor[2]), 1)
+	mac.Clear(true, true)
 
 	a.drawScene()
 
-	gl.Viewport(0, 0, dw, dh)
+	mac.Viewport(0, 0, int(dw), int(dh))
 	a.batch.Begin(a.W, a.H)
 	a.drawViewportOverlay()
 	if f := a.pendingOpen; f != nil {

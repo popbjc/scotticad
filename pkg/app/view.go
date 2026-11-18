@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/scotticad/scotticad/internal/mac"
 	"github.com/scotticad/scotticad/pkg/doc"
 	"github.com/scotticad/scotticad/pkg/geom"
-	"github.com/scotticad/scotticad/pkg/gl"
 	"github.com/scotticad/scotticad/pkg/render"
 	"github.com/scotticad/scotticad/pkg/shapes"
 	"github.com/scotticad/scotticad/pkg/window"
@@ -314,7 +314,7 @@ func (a *App) glViewport() (int32, int32, int32, int32) {
 
 func (a *App) drawScene() {
 	vx, vy, vw, vh := a.glViewport()
-	gl.Viewport(vx, vy, vw, vh)
+	mac.Viewport(int(vx), int(vy), int(vw), int(vh))
 	sc := a.scene
 	sc.Begin(a.cam.VP(a.aspect()), a.cam.Eye())
 	sc.PixelScale = float32(a.w.DPI)
@@ -336,20 +336,19 @@ func (a *App) drawScene() {
 		if a.place != nil && a.place.ok {
 			sp = append(sp, render.ShadowPart{Mesh: a.place.mesh, M: a.place.xf, Light: a.place.hole})
 		}
-		sc.RenderShadows(sp, srect, a.target.FBO, vx, vy, vw, vh)
+		sc.RenderShadows(sp, srect, a.target.Handle(), vx, vy, vw, vh)
 	}
 
-	gl.Enable(gl.DEPTH_TEST)
-	gl.DepthFunc(gl.LEQUAL)
-	gl.DepthMask(true)
-	gl.Disable(gl.BLEND)
-	gl.Disable(gl.CULL_FACE)
+	mac.SetDepthTest(true)
+	mac.SetDepthFuncLequal(true)
+	mac.SetDepthWrite(true)
+	mac.SetBlend(false)
+	mac.SetCull(false)
 
 	// workplane: translucent sheet, grid, border band, watermarks
 	drawPlane := func() {
-		gl.Enable(gl.BLEND)
-		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-		gl.DepthMask(false)
+		mac.SetBlend(true)
+		mac.SetDepthWrite(false)
 		sc.DrawPlane(-hw, -hl, hw, hl, 0, colPlane, srect, shadows)
 		var lines render.Lines
 		if s.ShowGrid {
@@ -371,11 +370,11 @@ func (a *App) drawScene() {
 	// without depth, so shapes resting on it show in full and their bases
 	// don't fight with it
 	if below {
-		gl.Disable(gl.DEPTH_TEST)
+		mac.SetDepthTest(false)
 		drawPlane()
-		gl.Enable(gl.DEPTH_TEST)
-		gl.DepthMask(true)
-		gl.Disable(gl.BLEND)
+		mac.SetDepthTest(true)
+		mac.SetDepthWrite(true)
+		mac.SetBlend(false)
 	}
 
 	// draw draws a part: cut by Section view if it is on, or as its halves
@@ -416,13 +415,12 @@ func (a *App) drawScene() {
 	solids(false)
 	if !below {
 		drawPlane()
-		gl.Disable(gl.BLEND)
-		gl.DepthMask(true)
+		mac.SetBlend(false)
+		mac.SetDepthWrite(true)
 	}
 	solids(true)
-	gl.Enable(gl.BLEND)
-	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-	gl.DepthMask(false)
+	mac.SetBlend(true)
+	mac.SetDepthWrite(false)
 	if a.ed.Workplane != nil {
 		// the active workplane: a green sheet with a border band and a
 		// coarse grid, in its own frame
@@ -459,7 +457,7 @@ func (a *App) drawScene() {
 	// previews: hole hover, align/mirror ghosts, tile ghost
 	a.drawGhosts()
 	a.drawAlignExtent()
-	gl.DepthMask(true)
+	mac.SetDepthWrite(true)
 
 	// outlines
 	var mask []render.MaskPart
@@ -489,12 +487,12 @@ func (a *App) drawScene() {
 		// the selection: a 3 px line and a soft glow beyond it; the hover
 		// a thinner line, so the selection always reads stronger
 		dpi := a.w.DPI
-		sc.DrawOutlines(mask, a.target.FBO, vx, vy, vw, vh, float32(math.Max(3, 3*dpi)), float32(math.Max(2, 2.2*dpi)),
+		sc.DrawOutlines(mask, a.target.Handle(), vx, vy, vw, vh, float32(math.Max(3, 3*dpi)), float32(math.Max(2, 2.2*dpi)),
 			float32(math.Max(9, 9*dpi)), 0.6, colSelect, colBundleChild, colHover)
 	}
 
 	a.drawViewCube()
-	gl.Disable(gl.DEPTH_TEST)
+	mac.SetDepthTest(false)
 }
 
 func (a *App) gridLines(l *render.Lines, hw, hl, z, minor, major float64) {
@@ -650,8 +648,8 @@ func (a *App) cubeCamera() render.Camera {
 func (a *App) drawViewCube() {
 	r := a.cubeRect()
 	d := a.w.DPI
-	gl.Viewport(int32(r.X*d), int32((a.H-r.Y-r.H)*d), int32(r.W*d), int32(r.H*d))
-	gl.Clear(gl.DEPTH_BUFFER_BIT)
+	mac.Viewport(int(r.X*d), int((a.H-r.Y-r.H)*d), int(r.W*d), int(r.H*d))
+	mac.Clear(false, true)
 	c := a.cubeCamera()
 	saved, savedEye := a.scene.VP, a.scene.Eye
 	a.scene.VP, a.scene.Eye = c.VP(1), c.Eye()
@@ -659,7 +657,7 @@ func (a *App) drawViewCube() {
 	if a.isHot("viewcube") || (a.drag != nil && a.drag.kind == dragCube) {
 		tint = [4]float32{0.80, 0.90, 1.0, 0.5}
 	}
-	gl.Enable(gl.DEPTH_TEST)
+	mac.SetDepthTest(true)
 	a.scene.DrawMesh(cubeMesh, render.Style{Edges: true, Tint: tint})
 	if a.cubeLabels == nil {
 		a.cubeLabels = buildCubeLabels()
@@ -667,7 +665,7 @@ func (a *App) drawViewCube() {
 	a.scene.DrawTris(a.cubeLabels, 1)
 	a.scene.VP, a.scene.Eye = saved, savedEye
 	vx, vy, vw, vh := a.glViewport()
-	gl.Viewport(vx, vy, vw, vh)
+	mac.Viewport(int(vx), int(vy), int(vw), int(vh))
 }
 
 // buildCubeLabels makes TOP/FRONT/... text lying on the cube faces.

@@ -697,7 +697,7 @@ func init() {
 			}},
 
 		// --- visibility
-		{Name: "hide", Doc: "Hide the selection (Ctrl+H).", Params: []apiParam{idsParam}, fn: func(a *App, p args) (any, error) {
+		{Name: "hide", Doc: "Hide the selection (Command+H).", Params: []apiParam{idsParam}, fn: func(a *App, p args) (any, error) {
 			a.withSel(p, a.ed.HideSelected)
 			return ok()
 		}},
@@ -705,7 +705,7 @@ func init() {
 			a.ed.ToggleHidden(p.i("id", 0))
 			return ok()
 		}},
-		{Name: "show_all", Doc: "Show all hidden shapes (Ctrl+Shift+H).", fn: func(a *App, p args) (any, error) { a.ed.ShowAll(); return ok() }},
+		{Name: "show_all", Doc: "Show all hidden shapes (Command+Shift+H).", fn: func(a *App, p args) (any, error) { a.ed.ShowAll(); return ok() }},
 
 		// --- grouping
 		{Name: "group", Doc: "Group the selection; returns the new group id.", Params: []apiParam{opt("mode", "string", `"union" (default) or "bundle"`), idsParam},
@@ -844,10 +844,10 @@ func init() {
 				return a.fil.settings, nil
 			}},
 		// --- clipboard and undo
-		{Name: "duplicate", Doc: "Ctrl+D; returns new ids.", fn: func(a *App, p args) (any, error) { return map[string]any{"ids": a.ed.Duplicate()}, nil }},
-		{Name: "copy", Doc: "Ctrl+C.", fn: func(a *App, p args) (any, error) { a.ed.Copy(); return ok() }},
-		{Name: "cut", Doc: "Ctrl+X.", fn: func(a *App, p args) (any, error) { a.ed.Cut(); return ok() }},
-		{Name: "paste", Doc: "Ctrl+V (or Ctrl+Shift+V in place); returns new ids.", Params: []apiParam{opt("in_place", "bool", "")}, fn: func(a *App, p args) (any, error) {
+		{Name: "duplicate", Doc: "Command+D; returns new ids.", fn: func(a *App, p args) (any, error) { return map[string]any{"ids": a.ed.Duplicate()}, nil }},
+		{Name: "copy", Doc: "Command+C.", fn: func(a *App, p args) (any, error) { a.ed.Copy(); return ok() }},
+		{Name: "cut", Doc: "Command+X.", fn: func(a *App, p args) (any, error) { a.ed.Cut(); return ok() }},
+		{Name: "paste", Doc: "Command+V (or Command+Shift+V in place); returns new ids.", Params: []apiParam{opt("in_place", "bool", "")}, fn: func(a *App, p args) (any, error) {
 			ids, err := a.ed.Paste(p.b("in_place", false))
 			return map[string]any{"ids": ids}, err
 		}},

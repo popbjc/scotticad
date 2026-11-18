@@ -34,11 +34,11 @@ Everything a script makes is one undo step, so **Ctrl+Z** takes it away
 again.
 
 To remake the script-made designs (after changing ScottiCAD, say), run
-`make examples` on Linux, or `python examples/build.py` on any platform
-after building ScottiCAD. Each script runs in a hidden ScottiCAD and its
-design is saved in `scotticad/`, replacing the old one. Original designs
-have no script, so this leaves them as they are; just don't give one the
-same name as a script, or the script's design will replace it.
+`make examples` on macOS after building ScottiCAD. Each script runs in a
+hidden ScottiCAD and its design is saved in `scotticad/`, replacing the old
+one. Original designs have no script, so this leaves them as they are; just
+don't give one the same name as a script, or the script's design will replace
+it.
 
 ## The examples
 

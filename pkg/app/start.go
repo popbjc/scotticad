@@ -40,9 +40,9 @@ func readRecent(p string) []string {
 func writeRecent(p string, files []string) error { return writePrefs(p, recentPrefs{Files: files}) }
 
 // samePath is whether two paths name the same file, as far as their text
-// says: Windows file names don't distinguish case, Linux ones do.
+// says: Windows and the default macOS volume are case-insensitive.
 func samePath(a, b string) bool {
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 		return strings.EqualFold(a, b)
 	}
 	return a == b

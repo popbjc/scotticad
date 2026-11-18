@@ -6,8 +6,8 @@ import (
 	"io"
 	"math"
 
+	"github.com/scotticad/scotticad/internal/mac"
 	"github.com/scotticad/scotticad/pkg/geom"
-	"github.com/scotticad/scotticad/pkg/gl"
 	"github.com/scotticad/scotticad/pkg/render"
 )
 
@@ -49,11 +49,11 @@ func (a *App) buildThumbs() {
 		cam.Target = b.Center()
 		cam.Dist = r / math.Sin(cam.Fov/2) * 1.02
 		t.Bind()
-		gl.ClearColor(1, 1, 1, 0)
-		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-		gl.Enable(gl.DEPTH_TEST)
-		gl.Disable(gl.BLEND)
-		gl.DepthMask(true)
+		mac.ClearColor(1, 1, 1, 0)
+		mac.Clear(true, true)
+		mac.SetDepthTest(true)
+		mac.SetBlend(false)
+		mac.SetDepthWrite(true)
 		a.scene.Begin(cam.VP(1), cam.Eye())
 		st := render.Style{Edges: true}
 		if tl.hole {
@@ -65,8 +65,7 @@ func (a *App) buildThumbs() {
 		img := t.Read(0, 0, size, size)
 		a.thumbs[key] = a.batch.AddImage(img)
 	}
-	gl.Disable(gl.DEPTH_TEST)
-	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+	mac.SetDepthTest(false)
 	a.target.Bind()
 }
 
@@ -83,8 +82,8 @@ func (a *App) setWindowIcons() {
 		t := render.NewTarget(8)
 		t.Resize(s, s)
 		t.Bind()
-		gl.ClearColor(0, 0, 0, 0)
-		gl.Clear(gl.COLOR_BUFFER_BIT)
+		mac.ClearColor(0, 0, 0, 0)
+		mac.Clear(true, false)
 		dpi := a.batch.DPI
 		a.batch.DPI = 1
 		a.batch.Begin(float64(s), float64(s))

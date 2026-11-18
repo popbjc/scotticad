@@ -1,7 +1,6 @@
 """End-to-end tests: drive ScottiCAD (headless) through the API.
 
-Run from the repository root after building (build.ps1 on Windows,
-make on Linux):
+Run from the repository root on macOS after building with ``make scotticad``:
     python -m pytest python/tests
 """
 

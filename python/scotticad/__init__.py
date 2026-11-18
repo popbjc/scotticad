@@ -36,14 +36,12 @@ class ScottiCADError(RuntimeError):
 
 
 def default_exe() -> str:
-    """Path of the ScottiCAD program: $SCOTTICAD_EXE, or the one built in
-    the repository root (scotticad.exe on Windows, scotticad elsewhere)."""
+    """Path of ScottiCAD: $SCOTTICAD_EXE, or the macOS binary in the repo root."""
     env = os.environ.get("SCOTTICAD_EXE")
     if env:
         return env
     here = os.path.dirname(os.path.abspath(__file__))
-    name = "scotticad.exe" if os.name == "nt" else "scotticad"
-    return os.path.normpath(os.path.join(here, "..", "..", name))
+    return os.path.normpath(os.path.join(here, "..", "..", "scotticad"))
 
 
 class Client:

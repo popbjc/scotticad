@@ -28,13 +28,14 @@ func TestAddRecent(t *testing.T) {
 	}
 }
 
-// Paths match as the platform's file names do: Windows ignores case,
-// Linux doesn't.
+// Paths match as the platform's file names do: Windows and default macOS
+// volumes ignore case; Linux doesn't.
 func TestSamePath(t *testing.T) {
 	if !samePath(`C:\a.scotticad`, `C:\a.scotticad`) || samePath("/a.scotticad", "/b.scotticad") {
 		t.Error("equal or different paths misjudged")
 	}
-	if got := samePath(`C:\a.scotticad`, `c:\A.SCOTTICAD`); got != (runtime.GOOS == "windows") {
+	caseInsensitive := runtime.GOOS == "windows" || runtime.GOOS == "darwin"
+	if got := samePath(`C:\a.scotticad`, `c:\A.SCOTTICAD`); got != caseInsensitive {
 		t.Errorf("paths differing in case: %v on %s", got, runtime.GOOS)
 	}
 }

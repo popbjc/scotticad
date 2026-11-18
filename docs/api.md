@@ -75,9 +75,8 @@ with launch(headless=True) as cad:
 `launch(exe=None, headless=True, width=1600, height=1000, design=None,
 timeout=30.0, scale=None)` starts ScottiCAD with the API on a free port
 and returns a connected client; leaving the `with` block quits ScottiCAD.
-It runs the program built at the top of the repository (`scotticad.exe`
-on Windows, `scotticad` on Linux), or the one the `SCOTTICAD_EXE`
-environment variable names.
+It runs the macOS program built at the top of the repository (`scotticad`),
+or the one the `SCOTTICAD_EXE` environment variable names.
 
 To connect to a ScottiCAD that is already running with `--api`, make a
 `Client(host="127.0.0.1", port=47800)`; `close()` disconnects without
@@ -630,7 +629,7 @@ Python: `cad.set_text(id, text, font=None)` returns nothing
 
 #### `hide`
 
-Hide the selection (Ctrl+H).
+Hide the selection (Command+H).
 
 Python: `cad.hide(ids=None)` returns nothing
 
@@ -650,7 +649,7 @@ Python: `cad.toggle_hidden(id)` returns nothing
 
 #### `show_all`
 
-Show all hidden shapes (Ctrl+Shift+H).
+Show all hidden shapes (Command+Shift+H).
 
 Python: `cad.show_all()` returns nothing
 
@@ -766,25 +765,25 @@ Python: `cad.set_filament_settings(material=None, density=None, diameter=None, l
 
 #### `duplicate`
 
-Ctrl+D; returns new ids.
+Command+D; returns new ids.
 
 Python: `cad.duplicate()` returns the reply's `ids`
 
 #### `copy`
 
-Ctrl+C.
+Command+C.
 
 Python: `cad.copy()` returns nothing
 
 #### `cut`
 
-Ctrl+X.
+Command+X.
 
 Python: `cad.cut()` returns nothing
 
 #### `paste`
 
-Ctrl+V (or Ctrl+Shift+V in place); returns new ids.
+Command+V (or Command+Shift+V in place); returns new ids.
 
 Python: `cad.paste(in_place=False)` returns the reply's `ids`
 

@@ -81,7 +81,7 @@ func (p Program) Uniform(name string) int32 {
 // Use selects the program for the draws that follow.
 func (p Program) Use() { C.sc_use_program(C.uintptr_t(p)) }
 
-func Uniform1i(loc int32, v int32)  { C.sc_uniform1i(C.int(loc), C.int(v)) }
+func Uniform1i(loc int32, v int32)   { C.sc_uniform1i(C.int(loc), C.int(v)) }
 func Uniform1f(loc int32, v float32) { C.sc_uniform1f(C.int(loc), C.float(v)) }
 func Uniform2f(loc int32, a, b float32) {
 	C.sc_uniform2f(C.int(loc), C.float(a), C.float(b))
@@ -138,7 +138,10 @@ func NewTexture(w, h int, nearest bool) Texture {
 // Update replaces the texture with pix, whose rows are stride bytes apart
 // (stride is normally 4*w).
 func (t Texture) Update(pix []byte, w, h, stride int) {
-	if t == 0 || len(pix) == 0 {
+	if t == 0 || w <= 0 || h <= 0 || stride <= 0 || w > int(^uint(0)>>1)/4 ||
+		stride < w*4 || h > int(^uint(0)>>1)/stride || len(pix) < stride*h ||
+		int64(C.int(w)) != int64(w) || int64(C.int(h)) != int64(h) ||
+		int64(C.int(stride)) != int64(stride) {
 		return
 	}
 	C.sc_texture_update(C.uintptr_t(t), unsafe.Pointer(&pix[0]), C.int(w), C.int(h), C.int(stride))
@@ -178,7 +181,10 @@ func (t Target) Blit() { C.sc_target_blit(C.uintptr_t(t)) }
 // Read resolves the target and copies the rectangle (x, y from the
 // top-left) as w*h*4 RGBA bytes into out.
 func (t Target) Read(x, y, w, h int, out []byte) {
-	if t == 0 || len(out) == 0 {
+	maxInt := int(^uint(0) >> 1)
+	if t == 0 || w <= 0 || h <= 0 || w > maxInt/4 || h > maxInt/(w*4) ||
+		len(out) < w*h*4 || int64(C.int(x)) != int64(x) || int64(C.int(y)) != int64(y) ||
+		int64(C.int(w)) != int64(w) || int64(C.int(h)) != int64(h) {
 		return
 	}
 	C.sc_target_read(C.uintptr_t(t), C.int(x), C.int(y), C.int(w), C.int(h), unsafe.Pointer(&out[0]))

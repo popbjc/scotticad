@@ -10,7 +10,7 @@ keyboard at the same time. A typical request goes like this:
 
 1. You ask for a part: "a stand for drill bits from 1 to 10 mm".
 2. The assistant writes a script and runs it. The whole run is one undo
-   step, so **Ctrl+Z** takes it all away.
+   step, so **Command+Z** takes it all away.
 3. It takes a screenshot to look at the result, and fixes what it sees,
    either by running the script again or with small direct edits.
 4. It saves or exports the part when you ask.
@@ -36,22 +36,20 @@ the start screen.
 **Claude Code:**
 
 ```
-claude mcp add scotticad -- C:\Tools\ScottiCAD\scotticad.exe --mcp
+claude mcp add scotticad -- /Applications/ScottiCAD.app/Contents/MacOS/ScottiCAD --mcp
 ```
 
-Use the path where you unpacked ScottiCAD; on Linux it's the path to
-`scotticad`. This adds ScottiCAD for Claude Code sessions started in the
-current folder; add `--scope user` after `add` to have it in every folder.
+Use the path where you installed ScottiCAD if it is not in `/Applications`.
+This adds ScottiCAD for Claude Code sessions started in the current folder;
+add `--scope user` after `add` to have it in every folder.
 
 **Claude Desktop:** add this to its configuration file
 (*Settings → Developer → Edit Config*), then restart Claude Desktop.
-Backslashes in Windows paths are doubled in JSON.
-
 ```json
 {
   "mcpServers": {
     "scotticad": {
-      "command": "C:\\Tools\\ScottiCAD\\scotticad.exe",
+      "command": "/Applications/ScottiCAD.app/Contents/MacOS/ScottiCAD",
       "args": ["--mcp"]
     }
   }
@@ -74,7 +72,7 @@ scotticad --api 127.0.0.1:47800
 Then give the assistant's client the connecting server instead:
 
 ```
-claude mcp add scotticad-live -- C:\Tools\ScottiCAD\scotticad.exe --mcp-connect 127.0.0.1:47800
+claude mcp add scotticad-live -- /Applications/ScottiCAD.app/Contents/MacOS/ScottiCAD --mcp-connect 127.0.0.1:47800
 ```
 
 `--mcp-connect` opens no window of its own: it passes the assistant's

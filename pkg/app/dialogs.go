@@ -96,7 +96,7 @@ func (a *App) drawPopups() {
 			notesLabel = "Show notes"
 		}
 		a.menu(x, y, 230, []menuItem{
-			{id: "m-hide", label: "Hide selected shapes", key: "Ctrl + H", icon: icHide, enabled: len(ed.Sel) > 0, click: ed.HideSelected},
+			{id: "m-hide", label: "Hide selected shapes", key: "⌘ + H", icon: icHide, enabled: len(ed.Sel) > 0, click: ed.HideSelected},
 			{id: "m-togglevis", label: "Toggle shape visibility", key: "V", icon: icToggleVis, enabled: true, click: func() { a.setMode(modeVisibility) }},
 			{id: "m-notes", label: notesLabel, key: "Shift + N", icon: icNotes, enabled: len(ed.Notes()) > 0 || a.notesHidden, click: a.toggleNotes},
 		}, 48, false)
@@ -149,12 +149,12 @@ func (a *App) drawPopups() {
 		a.menu(pr.X+10, pr.Y+98, pr.W-56, items, 30, false)
 	case popDesignMenu:
 		a.menu(a.menuX, titleH-6, 250, []menuItem{
-			{id: "dm-new", label: "New design", key: "Ctrl+N", icon: -1, enabled: true, click: a.newDesign},
-			{id: "dm-open", label: "Open…", key: "Ctrl+O", icon: -1, enabled: true, click: a.open},
-			{id: "dm-save", label: "Save", key: "Ctrl+S", icon: -1, enabled: true, click: func() { a.save(false) }},
-			{id: "dm-saveas", label: "Save as…", key: "Ctrl+Shift+S", icon: -1, enabled: true, click: func() { a.save(true) }},
-			{id: "dm-import", label: "Import…", key: "Ctrl+I", icon: -1, enabled: true, click: func() { a.popup = popImport }},
-			{id: "dm-export", label: "Export…", key: "Ctrl+E", icon: -1, enabled: true, click: func() { a.exportSel = len(a.ed.Sel) > 0; a.popup = popExport }},
+			{id: "dm-new", label: "New design", key: "⌘N", icon: -1, enabled: true, click: a.newDesign},
+			{id: "dm-open", label: "Open…", key: "⌘O", icon: -1, enabled: true, click: a.open},
+			{id: "dm-save", label: "Save", key: "⌘S", icon: -1, enabled: true, click: func() { a.save(false) }},
+			{id: "dm-saveas", label: "Save as…", key: "⌘⇧S", icon: -1, enabled: true, click: func() { a.save(true) }},
+			{id: "dm-import", label: "Import…", key: "⌘I", icon: -1, enabled: true, click: func() { a.popup = popImport }},
+			{id: "dm-export", label: "Export…", key: "⌘E", icon: -1, enabled: true, click: func() { a.exportSel = len(a.ed.Sel) > 0; a.popup = popExport }},
 			{id: "dm-runscript", label: "Run script…", icon: -1, enabled: !a.con.running, click: func() { a.popup = popNone; a.runScriptFile() }},
 			{id: "dm-help", label: "Keyboard shortcuts", key: "?", icon: -1, enabled: true, click: func() { a.popup = popHelp }},
 			{id: "dm-start", label: "Start screen", icon: -1, enabled: true, click: func() { a.popup = popStart }},
@@ -595,13 +595,13 @@ var exportFormats = []struct{ id, name, ext, what string }{
 func (a *App) drawHelp() {
 	b := a.batch
 	rows := [][2]string{
-		{"Copy / Cut / Paste", "Ctrl+C / Ctrl+X / Ctrl+V"}, {"Paste in place", "Ctrl+Shift+V"}, {"Duplicate", "Ctrl+D"},
-		{"Delete", "Delete"}, {"Undo / Redo", "Ctrl+Z / Ctrl+Y"}, {"Select all", "Ctrl+A"},
-		{"Union / Bundle group", "Ctrl+G / Ctrl+B"}, {"Ungroup", "Ctrl+Shift+G"}, {"Hole / Solid", "H / S"},
-		{"Hide selected / Show all", "Ctrl+H / Ctrl+Shift+H"}, {"Hide / show notes", "Shift+N"}, {"Toggle visibility mode", "V"}, {"Lock", "Ctrl+L"},
-		{"Transparent", "Ctrl+T"}, {"Nudge", "Arrows (Shift ×10)"}, {"Raise / lower", "Ctrl+Up / Ctrl+Down"},
+		{"Copy / Cut / Paste", "⌘C / ⌘X / ⌘V"}, {"Paste in place", "⌘⇧V"}, {"Duplicate", "⌘D"},
+		{"Delete", "Delete"}, {"Undo / Redo", "⌘Z / ⌘Y"}, {"Select all", "⌘A"},
+		{"Union / Bundle group", "⌘G / ⌘B"}, {"Ungroup", "⌘⇧G"}, {"Hole / Solid", "H / S"},
+		{"Hide selected / Show all", "⌘H / ⌘⇧H"}, {"Hide / show notes", "⇧N"}, {"Toggle visibility mode", "V"}, {"Lock", "⌘L"},
+		{"Transparent", "⌘T"}, {"Nudge", "Arrows (⇧ ×10)"}, {"Raise / lower", "⌘↑ / ⌘↓"},
 		{"Drop down", "D"}, {"Fit view", "F"}, {"Align / Mirror", "L / M"}, {"Split (then X / Y / Z, Enter)", "K"}, {"Section view", "Shift+K"}, {"Lay flat", "Shift+D"}, {"Place on surface", "C"},
-		{"Ruler / Construction plane", "R / W"}, {"Save / Open / New", "Ctrl+S / Ctrl+O / Ctrl+N"},
+		{"Ruler / Construction plane", "R / W"}, {"Save / Open / New", "⌘S / ⌘O / ⌘N"},
 		{"Orbit", "Right drag"}, {"Pan", "Middle or Shift+Right drag"}, {"Zoom", "Wheel"},
 	}
 	// one column, or two side by side when a column is taller than the

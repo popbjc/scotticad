@@ -230,7 +230,7 @@ func LookAt(eye, center, up Vec3) Mat4 {
 	}
 }
 
-// Float32 converts to a float32 array for upload to OpenGL.
+// Float32 converts to a float32 array for upload to the renderer.
 func (m Mat4) Float32() [16]float32 {
 	var f [16]float32
 	for i, v := range m {

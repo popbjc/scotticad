@@ -24,16 +24,17 @@ import (
 //go:embed fonts/LiberationSans-Bold.ttf
 var multilanguageTTF []byte
 
-// The font menu's other names mapped to installed font files (the first
-// found wins): the Windows fonts, then their Linux equivalents. Liberation
-// shares Arial's, Times New Roman's and Courier's metrics.
+// The font menu's other names map to installed font files (the first found
+// wins). macOS fonts come first; the remaining names are fallbacks for
+// non-Darwin tooling builds. Liberation shares Arial's, Times New Roman's and
+// Courier's metrics.
 var fontFiles = map[string][]string{
-	"Sans":       {"arial.ttf", "segoeui.ttf", "LiberationSans-Regular.ttf", "DejaVuSans.ttf"},
-	"Sans Bold":  {"arialbd.ttf", "LiberationSans-Bold.ttf", "DejaVuSans-Bold.ttf"},
-	"Sans Mono":  {"consola.ttf", "cour.ttf", "LiberationMono-Regular.ttf", "DejaVuSansMono.ttf"},
-	"Serif":      {"times.ttf", "georgia.ttf", "LiberationSerif-Regular.ttf", "DejaVuSerif.ttf"},
-	"Serif Bold": {"timesbd.ttf", "LiberationSerif-Bold.ttf", "DejaVuSerif-Bold.ttf"},
-	"Script":     {"segoesc.ttf", "comic.ttf", "ComicNeue-Regular.ttf", "ComicNeue-Bold.ttf", "URWChanceryL-MediItal.otf"},
+	"Sans":       {"Arial.ttf", "HelveticaNeue.ttf", "Helvetica.ttf", "LiberationSans-Regular.ttf", "DejaVuSans.ttf", "segoeui.ttf"},
+	"Sans Bold":  {"Arial Bold.ttf", "Arial-Bold.ttf", "HelveticaNeue-Bold.ttf", "LiberationSans-Bold.ttf", "DejaVuSans-Bold.ttf", "arialbd.ttf"},
+	"Sans Mono":  {"Courier New.ttf", "Monaco.ttf", "LiberationMono-Regular.ttf", "DejaVuSansMono.ttf", "consola.ttf", "cour.ttf"},
+	"Serif":      {"Times New Roman.ttf", "Georgia.ttf", "Times.ttf", "LiberationSerif-Regular.ttf", "DejaVuSerif.ttf", "times.ttf"},
+	"Serif Bold": {"Times New Roman Bold.ttf", "Georgia Bold.ttf", "Times Bold.ttf", "LiberationSerif-Bold.ttf", "DejaVuSerif-Bold.ttf", "timesbd.ttf"},
+	"Script":     {"Apple Chancery.ttf", "Comic Sans MS.ttf", "ComicNeue-Regular.ttf", "ComicNeue-Bold.ttf", "URWChanceryL-MediItal.otf", "segoesc.ttf", "comic.ttf"},
 }
 
 // FontNames lists the font menu's names first, then installed system fonts

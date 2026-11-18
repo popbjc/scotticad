@@ -127,12 +127,12 @@ func (a *App) leftTools() []tool {
 	ed := a.ed
 	sel := len(ed.Sel) > 0
 	return []tool{
-		{id: "copy", tip: "Copy", key: "Ctrl + C", icon: icCopy, enabled: sel, click: func() { ed.Copy() }},
-		{id: "paste", tip: "Paste", key: "Ctrl + V", icon: icPaste, enabled: true, click: func() { a.paste(false) }},
-		{id: "duplicate", tip: "Duplicate", key: "Ctrl + D", icon: icDuplicate, enabled: sel, click: func() { ed.Duplicate() }},
+		{id: "copy", tip: "Copy", key: "⌘ + C", icon: icCopy, enabled: sel, click: func() { ed.Copy() }},
+		{id: "paste", tip: "Paste", key: "⌘ + V", icon: icPaste, enabled: true, click: func() { a.paste(false) }},
+		{id: "duplicate", tip: "Duplicate", key: "⌘ + D", icon: icDuplicate, enabled: sel, click: func() { ed.Duplicate() }},
 		{id: "delete", tip: "Delete", key: "Delete", icon: icDelete, enabled: sel, click: func() { ed.Delete(nil) }},
-		{id: "undo", tip: "Undo", key: "Ctrl + Z", icon: icUndo, enabled: ed.Hist.CanUndo(), click: func() { a.undo() }},
-		{id: "redo", tip: "Redo", key: "Ctrl + Y", icon: icRedo, enabled: ed.Hist.CanRedo(), click: func() { a.redo() }},
+		{id: "undo", tip: "Undo", key: "⌘ + Z", icon: icUndo, enabled: ed.Hist.CanUndo(), click: func() { a.undo() }},
+		{id: "redo", tip: "Redo", key: "⌘ + Y", icon: icRedo, enabled: ed.Hist.CanRedo(), click: func() { a.redo() }},
 	}
 }
 
@@ -159,11 +159,11 @@ func (a *App) rightTools() []tool {
 		hasGroup = hasGroup || n.IsGroup()
 	}
 	return []tool{
-		{id: "showall", tip: "Show all", key: "Ctrl + Shift + H", icon: icEye, enabled: true, active: ed.AnyHidden(), click: func() { ed.ShowAll() }},
+		{id: "showall", tip: "Show all", key: "⌘ + Shift + H", icon: icEye, enabled: true, active: ed.AnyHidden(), click: func() { ed.ShowAll() }},
 		{id: "visibility", tip: "Visibility", icon: icCaret, enabled: true, caret: true, click: func() { a.openPopup(popVisibility) }},
-		{id: "bundle", tip: "Bundle Group", key: "Ctrl + B", icon: icBundle, enabled: multi, click: func() { a.group(doc.ModeBundle) }},
-		{id: "union", tip: "Union Group", key: "Ctrl + G", icon: icUnion, enabled: multi, click: func() { a.group(doc.ModeUnion) }},
-		{id: "ungroup", tip: "Ungroup", key: "Ctrl + Shift + G", icon: icUngroup, enabled: hasGroup, click: func() { ed.Ungroup() }},
+		{id: "bundle", tip: "Bundle Group", key: "⌘ + B", icon: icBundle, enabled: multi, click: func() { a.group(doc.ModeBundle) }},
+		{id: "union", tip: "Union Group", key: "⌘ + G", icon: icUnion, enabled: multi, click: func() { a.group(doc.ModeUnion) }},
+		{id: "ungroup", tip: "Ungroup", key: "⌘ + Shift + G", icon: icUngroup, enabled: hasGroup, click: func() { ed.Ungroup() }},
 		{id: "split", tip: "Split", key: "K", icon: icSplit, enabled: len(ed.Editable()) > 0, active: a.mode == modeSplit, click: func() { a.setMode(modeSplit) }},
 		{id: "section", tip: "Section view", key: "Shift + K", icon: icSection, enabled: len(ed.Doc.Nodes) > 0 || a.section.on, active: a.section.on, click: func() { a.setSection(!a.section.on) }},
 		{id: "align", tip: "Align", key: "L", icon: icAlign, enabled: len(ed.Editable()) > 0, active: a.mode == modeAlign, click: func() { a.setMode(modeAlign) }},

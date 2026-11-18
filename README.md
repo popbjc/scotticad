@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/scotticad/scotticad/releases/latest"><b>⬇ Download for Windows and Linux</b></a>
+  <a href="https://github.com/scotticad/scotticad/releases/latest"><b>⬇ Download for macOS</b></a>
   &nbsp;·&nbsp;
   <a href="https://www.scotticad.com/"><b>🌐 www.scotticad.com</b></a>
 </p>
@@ -24,69 +24,30 @@
   <a href="https://github.com/scotticad/scotticad/releases/latest"><img src="https://img.shields.io/github/v/release/scotticad/scotticad?label=download&color=1b63b8" alt="Latest release"></a>
   <a href="https://www.scotticad.com/"><img src="https://img.shields.io/badge/website-www.scotticad.com-1b63b8" alt="Website: www.scotticad.com"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-2fa84f" alt="License: Apache-2.0"></a>
-  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-555" alt="Platform: Windows and Linux">
+  <img src="https://img.shields.io/badge/platform-macOS-555" alt="Platform: macOS">
 </p>
 
 ---
 
 ## Download
 
-ScottiCAD is distributed as a ready-to-run program on GitHub Releases, for
-Windows and Linux.
+ScottiCAD is distributed as a ready-to-run macOS app on GitHub Releases.
 
 **[⬇ Download the latest release](https://github.com/scotticad/scotticad/releases/latest)**
 
-<!-- RELEASE: name the release assets scotticad-vX.Y.Z-windows-amd64.zip,
-     scotticad-vX.Y.Z-linux-amd64.tar.gz and scotticad-vX.Y.Z-linux-arm64.tar.gz
-     (release.ps1 and make release make them) so these steps match -->
-
-### Windows
-
-1. On the [latest release](https://github.com/scotticad/scotticad/releases/latest)
-   page, under **Assets**, download the Windows zip file
-   (`scotticad-vX.Y.Z-windows-amd64.zip`, where X.Y.Z is the version).
-2. Unzip it anywhere, such as your Documents folder or a USB stick.
-3. Run **`scotticad.exe`**. There is no installer and nothing else to set up.
-
-**Requirements:** Windows 10 or 11 (64-bit) and graphics that support
-OpenGL 3.3, which almost any PC from the last ten years has.
-
-> **Windows SmartScreen:** because the program is new and not code-signed,
-> Windows may say it "protected your PC" the first time you run it. Click
-> **More info → Run anyway**. You can always [build it yourself](#building-from-source)
-> from the source code instead.
-
-### Linux
-
-1. Download `scotticad-vX.Y.Z-linux-amd64.tar.gz` (or `-linux-arm64.tar.gz`
-   for a 64-bit ARM computer) from the
+1. Download `scotticad-vX.Y.Z-macos-<architecture>.zip` from the
    [latest release](https://github.com/scotticad/scotticad/releases/latest).
-2. Unpack it: `tar xzf scotticad-vX.Y.Z-linux-amd64.tar.gz`
-3. Run **`./scotticad`** in the folder it made. Or run **`./install.sh`** to
-   add ScottiCAD to your applications menu and open `.scotticad` designs with
-   a double click; it installs for you alone (no root), and
-   `./install.sh --uninstall` takes it away again.
+2. Unzip it and move **ScottiCAD.app** into Applications.
+3. Open ScottiCAD. Public releases should be signed and notarized. For an
+   unsigned local/test build, Control-click the app, choose **Open**, then
+   confirm the Gatekeeper warning.
 
-**Requirements:** a 64-bit Linux desktop on X11, or on Wayland with XWayland
-(GNOME, KDE and most others have it), and graphics with OpenGL 3.3 (the Mesa
-drivers of any current distribution do). Open and Save use your desktop's
-own file dialog (through xdg-desktop-portal), or zenity or kdialog where
-there is none. The interface follows your desktop's scale setting
-(`Xft.dpi` or `GDK_SCALE`); `./scotticad --scale 2` sets it by hand.
-Dragging files onto the window isn't supported on Linux yet: use the
-*Import* button.
+**Requirements:** macOS 12 or newer and a Mac with Metal support. The app uses
+Cocoa and Metal directly; Windows and Linux builds are no longer supported.
 
-> **Raspberry Pi:** the Pi's graphics drivers offer OpenGL 3.1, below what
-> ScottiCAD needs. It runs with software rendering instead, more slowly:
-> `LIBGL_ALWAYS_SOFTWARE=1 ./scotticad`
-
-To update, download the new release and replace the old folder (on Linux,
-run the new `install.sh` if you used it); your designs are separate files
-and are not affected. Older versions are on the
+To update, replace the old app with the new release; your designs remain
+separate files and are not affected. Older versions are on the
 [Releases page](https://github.com/scotticad/scotticad/releases).
-
-<!-- RELEASE: optionally list checksums here, e.g.
-     SHA-256 (scotticad-vX.Y.Z-windows-amd64.zip): <hash> -->
 
 ---
 
@@ -122,7 +83,7 @@ protractor, and line things up with the align tool.
 - **Export** to 3MF (with colours), STL, OBJ and GLB (glTF), or to SVG for
   laser cutting
 - **Import** STL, OBJ and SVG files, with the *Import* button or by
-  dragging them onto the window (Windows)
+  dragging them onto the window (macOS)
 - Watertight exports, with holes and groups fully resolved
 - **Split** parts with a plane, **lay** any face flat on the build plate,
   and look inside with **section view**
@@ -166,7 +127,7 @@ Apache-2.0 licensed. Use it for anything, including commercial work.
 
 1. **Add shapes**: drag them from the panel on the right onto the build plate.
 2. **Make a hole**: select a shape and press **H** (or click *Hole*).
-3. **Combine**: select the shapes and press **Ctrl+G**. Holes are cut away.
+3. **Combine**: select the shapes and press **⌘G**. Holes are cut away.
 4. **Size and place**: drag the handles, or click any dimension and type a number.
 5. **Export**: *File → Export…* and choose STL for your slicer, or 3MF to
    keep the colours (a part per colour).
@@ -177,9 +138,9 @@ favourites:
 | Action | Keys |
 |---|---|
 | Orbit / pan / zoom | Right-drag / Shift+right-drag or middle-drag / wheel |
-| Group / ungroup | Ctrl+G / Ctrl+Shift+G |
+| Group / ungroup | ⌘G / ⌘⇧G |
 | Hole / solid | H / S |
-| Duplicate | Ctrl+D |
+| Duplicate | ⌘D |
 | Align / mirror | L / M |
 | Split with a plane | K (then X / Y / Z, Enter) |
 | Section view (see inside) | Shift+K |
@@ -194,7 +155,7 @@ favourites:
 
 Click **Scripting** (top right) to open the console under the 3D view.
 Type at the `>>>` prompt, or use the **Editor** tab for longer scripts
-(**F5** runs, **Ctrl+S** saves). *File → Run script…* opens a script and
+(**F5** runs, **⌘S** saves). *File → Run script…* opens a script and
 runs it.
 
 ```python
@@ -217,8 +178,8 @@ in the editor.
 
 - `print` output, results and errors appear in the console; click an
   error to jump to its line in the script.
-- A whole run undoes with one **Ctrl+Z**.
-- **Stop** (or **Ctrl+C**) ends a script that runs too long.
+- A whole run undoes with one **⌘Z**.
+- **Stop** (or **⌘C**) ends a script that runs too long.
 - Scripts can't touch your files, the network or other programs, apart
   from the files they name in `cad` calls (`cad.open`, `cad.save`,
   `cad.export`, `cad.import_file`, `cad.screenshot`).
@@ -274,8 +235,7 @@ with launch(headless=True) as cad:
 
 The client lives in [`python/scotticad`](python/scotticad) in this
 repository. `launch()` starts the program built at the top of the
-repository (`scotticad.exe` on Windows, `scotticad` on Linux); set the
-`SCOTTICAD_EXE` environment variable to use one from a release instead.
+repository; set `SCOTTICAD_EXE` to use a release build instead.
 
 The API speaks JSON-RPC 2.0 over a local socket
 (`scotticad --api 127.0.0.1:47800`), so any language can use it.
@@ -293,13 +253,12 @@ watch. Ask for "a wall bracket for a 25 mm pipe with two countersunk M4
 holes", and the assistant writes a script, runs it, takes a screenshot to
 check the result, and fixes what it sees. Everything happens in an
 ordinary ScottiCAD window, where you can take over with the mouse at any
-time, and each script it runs undoes with one **Ctrl+Z**.
+time, and each script it runs undoes with one **⌘Z**.
 
-For Claude Code, with the full path to `scotticad.exe` (Windows) or
-`scotticad` (Linux) where you unpacked it:
+For Claude Code, use the executable inside `ScottiCAD.app`:
 
-```
-claude mcp add scotticad -- C:\Tools\ScottiCAD\scotticad.exe --mcp
+```sh
+claude mcp add scotticad -- /Applications/ScottiCAD.app/Contents/MacOS/ScottiCAD --mcp
 ```
 
 That starts a ScottiCAD window when the assistant needs one. To work
@@ -313,43 +272,28 @@ which files the assistant can reach.
 
 ## Building from source
 
-You need [Go](https://go.dev/dl/) 1.25 or newer. Any Go from 1.21 on also
-works when online: it downloads 1.25 for the build by itself. No C compiler
-or other libraries are required, on either platform. The test suite also needs
-Python 3 (and, on Linux, an X display: `xvfb-run` from the xvfb package
-provides one).
-
-On Windows:
-
-```powershell
-git clone https://github.com/scotticad/scotticad.git
-cd scotticad
-.\build.ps1          # builds scotticad.exe
-.\build.ps1 -Test    # also runs the Go and Python test suites
-```
-
-On Linux:
+You need [Go](https://go.dev/dl/) 1.25 or newer and Xcode Command Line Tools.
+The test suite also needs Python 3.
 
 ```sh
 git clone https://github.com/scotticad/scotticad.git
 cd scotticad
-make                 # builds scotticad
-make test            # also runs the Go and Python test suites
-make install         # installs it for you, with a menu entry (make uninstall removes it)
-```
-
-`make windows`, `make linux-arm64` and `make cross` cross-compile into `build/`.
-
-Or with Go directly (Go cross-compiles either one from anywhere):
-
-```sh
-go build -trimpath -ldflags "-H windowsgui -s -w" -o scotticad.exe ./cmd/scotticad   # Windows
-CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o scotticad ./cmd/scotticad      # Linux
+make                 # builds build/ScottiCAD.app
+make test            # runs the Go and Python test suites
+make release-macos   # packages the app and prints its SHA-256
 ```
 
 The version shown in *File → About ScottiCAD* comes from the [`VERSION`](VERSION) file.
-`.\release.ps1` (Windows) and `make release` (Linux) build the release
-packages for that version: the Windows zip and the Linux tarballs.
+`make release-macos` builds the app bundle and release zip for the current
+Mac architecture. Without signing settings it creates an unsigned test build.
+For a public release, configure a Developer ID Application certificate and a
+`notarytool` keychain profile, then run:
+
+```sh
+make release-macos SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" NOTARY_PROFILE=ScottiCAD
+```
+
+The signed build is notarized and stapled before the release zip is created.
 
 ---
 
@@ -357,8 +301,7 @@ packages for that version: the Windows zip and the Linux tarballs.
 
 Bug reports and ideas are welcome: open an
 [issue](https://github.com/scotticad/scotticad/issues). Pull requests are
-welcome too; run `.\build.ps1 -Test` (or `make test`) before
-submitting.
+welcome too; run `make test` on macOS before submitting.
 
 ## Links
 

@@ -121,14 +121,14 @@ func (a *App) drawInspector() {
 	if locked {
 		lockTip = "Unlock"
 	}
-	a.button("insp-lock", lr, lockTip, "Ctrl + L", tipBelow, a.toggleLock)
+	a.button("insp-lock", lr, lockTip, "⌘ + L", tipBelow, a.toggleLock)
 	hr := render.Rect{X: r.X + r.W - 34, Y: r.Y + 8, W: 24, H: 24}
 	hc := colIcon
 	if a.isHot("insp-hide") {
 		hc = colIconHover
 	}
 	drawIcon(b, icEyeOff, hr.Inset(2), hc)
-	a.button("insp-hide", hr, "Hide", "Ctrl + H", tipBelow, a.ed.HideSelected)
+	a.button("insp-hide", hr, "Hide", "⌘ + H", tipBelow, a.ed.HideSelected)
 	if !a.inspectorOpen {
 		return
 	}
@@ -304,7 +304,7 @@ func (a *App) paramValue(n *doc.Node, p shapes.Param) float64 {
 func (a *App) drawParams(n *doc.Node, ps []shapes.Param, x, y, w float64) {
 	b := a.batch
 	if n.Assembly != "" {
-		b.Text("Ungroup (Ctrl+Shift+G) to separate", x+4, y, fontSmall, false, colTextDim)
+		b.Text("Ungroup (⌘⇧G) to separate", x+4, y, fontSmall, false, colTextDim)
 		b.Text("the parts.", x+4, y+16, fontSmall, false, colTextDim)
 		y += 40
 	} else if n.IsGroup() {

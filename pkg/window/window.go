@@ -1,7 +1,5 @@
-// Package window is a minimal platform host: one top-level window with an
-// OpenGL context, input events, clipboard, cursors and file dialogs. The
-// Windows implementation is written against the Win32 API directly, the
-// Linux one against X11 and GLX through purego; neither uses cgo.
+// Package window hosts ScottiCAD's single macOS window, input events,
+// clipboard, cursors and system dialogs.
 package window
 
 import (
@@ -26,8 +24,7 @@ const (
 	Alt
 )
 
-// Handler receives window events. All calls happen on the window thread
-// with the GL context current.
+// Handler receives window events on the platform's UI thread.
 type Handler interface {
 	MouseMove(x, y float64, m Mods)
 	MouseDown(btn int, x, y float64, m Mods, double bool)
@@ -47,8 +44,7 @@ type Handler interface {
 	CaptureLost()
 }
 
-// Cursor identifiers (the Win32 IDC_ numbers, which the Windows
-// implementation uses directly).
+// Cursor identifiers use the Win32 IDC_ numbers as a stable internal enum.
 const (
 	CursorArrow    = 32512
 	CursorIBeam    = 32513
@@ -63,7 +59,7 @@ const (
 	CursorHand     = 32649
 )
 
-// Message box kinds and results (the Win32 MessageBox numbers).
+// Message box kinds and results use the Win32 values as a stable internal enum.
 const (
 	MsgOK          = 0
 	MsgYesNoCancel = 3
@@ -74,10 +70,8 @@ const (
 	IDNo           = 7
 )
 
-// Key codes passed to KeyDown and KeyUp are the Win32 virtual-key numbers
-// on every platform: letters and digits are their upper-case ASCII codes,
-// and the rest are the values below (the Linux implementation translates
-// X keysyms to them).
+// Key codes passed to KeyDown and KeyUp use Win32 virtual-key numbers as a
+// stable internal enum: letters and digits are upper-case ASCII codes.
 const (
 	KeyBack     = 0x08
 	KeyTab      = 0x09

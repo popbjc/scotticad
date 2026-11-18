@@ -7,35 +7,59 @@ import (
 	"os"
 	"sync"
 	"unicode/utf8"
+	"unsafe"
 
+	"github.com/scotticad/scotticad/internal/mac"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/gofont/gomono"
 	"golang.org/x/image/font/gofont/goregular"
 	"golang.org/x/image/font/opentype"
 	"golang.org/x/image/math/fixed"
 
-	"github.com/scotticad/scotticad/pkg/gl"
 	"github.com/scotticad/scotticad/pkg/sysfont"
 )
 
-const batchVS = `#version 330 core
-layout(location=0) in vec2 aPos;
-layout(location=1) in vec2 aUV;
-layout(location=2) in vec4 aCol;
-uniform vec2 uScreen;
-out vec2 vUV;
-out vec4 vCol;
-void main() {
-  vUV = aUV; vCol = aCol;
-  gl_Position = vec4(aPos.x / uScreen.x * 2.0 - 1.0, 1.0 - aPos.y / uScreen.y * 2.0, 0.0, 1.0);
-}`
+const batchMSL = `
+#include <metal_stdlib>
+using namespace metal;
 
-const batchFS = `#version 330 core
-in vec2 vUV;
-in vec4 vCol;
-uniform sampler2D uTex;
-out vec4 o;
-void main() { o = vCol * texture(uTex, vUV); }`
+struct VIn {
+	float2 pos [[attribute(0)]];
+	float2 uv [[attribute(1)]];
+	float4 col [[attribute(2)]];
+};
+
+struct VOut {
+	float4 pos [[position]];
+	float2 uv;
+	float4 col;
+};
+
+vertex VOut vs_batch(uint vid [[vertex_id]],
+                     const device VIn *verts [[buffer(0)]],
+                     constant float2 &uScreen [[buffer(1)]]) {
+	VIn v = verts[vid];
+	VOut o;
+	o.pos = float4(v.pos.x / uScreen.x * 2.0 - 1.0,
+	               1.0 - v.pos.y / uScreen.y * 2.0,
+	               0.0, 1.0);
+	o.uv = v.uv;
+	o.col = v.col;
+	return o;
+}
+
+fragment float4 fs_batch(VOut in [[stage_in]],
+                         texture2d<float> uTex [[texture(0)]],
+                         sampler uSamp [[sampler(0)]]) {
+	return in.col * uTex.sample(uSamp, in.uv);
+}
+`
+
+const (
+	batchUniforms = "uScreen:0:1:0:8"
+	batchAttrs    = "32:0:2:0;32:1:2:8;32:2:4:16"
+	batchVBOSize  = 1 << 20
+)
 
 // Color is an RGBA colour with 0..1 components.
 type Color [4]float32
@@ -59,21 +83,22 @@ type Sprite struct {
 
 // Batch draws 2D geometry with a texture atlas (fonts and images).
 type Batch struct {
-	prog          uint32
-	uScreen, uTex int32
-	vao, vbo      uint32
-	data          []float32
-	W, H          float64
-	atlas         uint32
-	atlasSize     int
-	ax, ay, rowH  int
-	pix           *image.RGBA
-	dirty         bool
-	white         Sprite
-	fonts         map[fontKey]*fontFace
-	ttf           map[int]*opentype.Font
-	clipStack     []Rect
-	DPI           float64
+	prog         mac.Program
+	uScreen      int32
+	vbo          mac.Buffer
+	vboSize      int
+	data         []float32
+	W, H         float64
+	atlas        mac.Texture
+	atlasSize    int
+	ax, ay, rowH int
+	pix          *image.RGBA
+	dirty        bool
+	white        Sprite
+	fonts        map[fontKey]*fontFace
+	ttf          map[int]*opentype.Font
+	clipStack    []Rect
+	DPI          float64
 	// Generation counts atlas rebuilds: sprites from an earlier generation
 	// (images added with AddImage) point at stale places and must be added
 	// again.
@@ -124,27 +149,14 @@ type fontFace struct {
 func NewBatch() (*Batch, error) {
 	b := &Batch{atlasSize: 2048, fonts: map[fontKey]*fontFace{}, ttf: map[int]*opentype.Font{}, DPI: 1}
 	var err error
-	if b.prog, err = gl.Program(batchVS, batchFS); err != nil {
+	if b.prog, err = mac.NewProgram("batch", batchMSL, "vs_batch", "fs_batch", batchUniforms, batchAttrs); err != nil {
 		return nil, err
 	}
-	b.uScreen, b.uTex = gl.Uniform(b.prog, "uScreen"), gl.Uniform(b.prog, "uTex")
-	b.vao, b.vbo = gl.GenVertexArray(), gl.GenBuffer()
-	gl.BindVertexArray(b.vao)
-	gl.BindBuffer(gl.ARRAY_BUFFER, b.vbo)
-	gl.EnableVertexAttribArray(0)
-	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 32, 0)
-	gl.EnableVertexAttribArray(1)
-	gl.VertexAttribPointer(1, 2, gl.FLOAT, false, 32, 8)
-	gl.EnableVertexAttribArray(2)
-	gl.VertexAttribPointer(2, 4, gl.FLOAT, false, 32, 16)
-	gl.BindVertexArray(0)
+	b.uScreen = b.prog.Uniform("uScreen")
+	b.vboSize = batchVBOSize
+	b.vbo = mac.NewBuffer(b.vboSize)
 	b.pix = image.NewRGBA(image.Rect(0, 0, b.atlasSize, b.atlasSize))
-	b.atlas = gl.GenTexture()
-	gl.BindTexture(gl.TEXTURE_2D, b.atlas)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	b.atlas = mac.NewTexture(b.atlasSize, b.atlasSize, false)
 	b.addWhite()
 	b.dirty = true
 	return b, nil
@@ -220,11 +232,12 @@ func (b *Batch) loadTTF(st int) *opentype.Font {
 	if f, ok := b.ttf[st]; ok {
 		return f
 	}
-	// the Windows interface fonts, then Linux ones of a similar look
+	// Prefer fonts commonly present on macOS, then retain cross-platform
+	// fallbacks for the non-Darwin test and tooling builds.
 	names := [][]string{
-		{"segoeui.ttf", "NotoSans-Regular.ttf", "LiberationSans-Regular.ttf", "DejaVuSans.ttf"},
-		{"segoeuib.ttf", "NotoSans-Bold.ttf", "LiberationSans-Bold.ttf", "DejaVuSans-Bold.ttf"},
-		{"consola.ttf", "DejaVuSansMono.ttf", "LiberationMono-Regular.ttf", "NotoSansMono-Regular.ttf"},
+		{"Arial.ttf", "HelveticaNeue.ttf", "Helvetica.ttf", "LiberationSans-Regular.ttf", "NotoSans-Regular.ttf", "DejaVuSans.ttf", "segoeui.ttf"},
+		{"Arial Bold.ttf", "Arial-Bold.ttf", "HelveticaNeue-Bold.ttf", "LiberationSans-Bold.ttf", "NotoSans-Bold.ttf", "DejaVuSans-Bold.ttf", "segoeuib.ttf"},
+		{"Courier New.ttf", "Monaco.ttf", "LiberationMono-Regular.ttf", "DejaVuSansMono.ttf", "NotoSansMono-Regular.ttf", "consola.ttf"},
 	}[st]
 	var f *opentype.Font
 	for _, n := range names {
@@ -574,38 +587,42 @@ func (b *Batch) PopClip() {
 
 func (b *Batch) applyClip() {
 	if len(b.clipStack) == 0 {
-		gl.Disable(gl.SCISSOR_TEST)
+		mac.ScissorReset()
 		return
 	}
 	r := b.clipStack[len(b.clipStack)-1]
-	gl.Enable(gl.SCISSOR_TEST)
-	gl.Scissor(int32(r.X*b.DPI), int32(b.H*b.DPI-(r.Y+r.H)*b.DPI), int32(r.W*b.DPI), int32(r.H*b.DPI))
+	mac.Scissor(int(r.X*b.DPI), int(b.H*b.DPI-(r.Y+r.H)*b.DPI), int(r.W*b.DPI), int(r.H*b.DPI))
 }
 
 // Flush draws accumulated geometry. Coordinates are logical pixels; the
 // viewport is device pixels.
 func (b *Batch) Flush() {
 	if b.dirty {
-		gl.BindTexture(gl.TEXTURE_2D, b.atlas)
-		gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, int32(b.atlasSize), int32(b.atlasSize), gl.RGBA, gl.UNSIGNED_BYTE, b.pix.Pix)
+		b.atlas.Update(b.pix.Pix, b.atlasSize, b.atlasSize, b.atlasSize*4)
 		b.dirty = false
 	}
 	if len(b.data) == 0 {
 		return
 	}
-	gl.Disable(gl.DEPTH_TEST)
-	gl.Enable(gl.BLEND)
-	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-	gl.UseProgram(b.prog)
-	gl.Uniform2f(b.uScreen, float32(b.W), float32(b.H))
-	gl.ActiveTexture(gl.TEXTURE0)
-	gl.BindTexture(gl.TEXTURE_2D, b.atlas)
-	gl.Uniform1i(b.uTex, 0)
-	gl.BindVertexArray(b.vao)
-	gl.BindBuffer(gl.ARRAY_BUFFER, b.vbo)
-	gl.BufferData(gl.ARRAY_BUFFER, b.data, gl.DYNAMIC_DRAW)
-	gl.DrawArrays(gl.TRIANGLES, 0, int32(len(b.data)/8))
-	gl.BindVertexArray(0)
+	mac.SetDepthTest(false)
+	mac.SetBlend(true)
+	b.prog.Use()
+	mac.Uniform2f(b.uScreen, float32(b.W), float32(b.H))
+	mac.BindTexture(b.atlas)
+	n := len(b.data) * 4
+	if n > b.vboSize {
+		if b.vbo != 0 {
+			b.vbo.Free()
+		}
+		b.vboSize = batchVBOSize
+		for b.vboSize < n {
+			b.vboSize *= 2
+		}
+		b.vbo = mac.NewBuffer(b.vboSize)
+	}
+	bytes := unsafe.Slice((*byte)(unsafe.Pointer(&b.data[0])), n)
+	b.vbo.Update(bytes)
+	mac.VertexBuffer(b.vbo)
+	mac.Draw(mac.Triangles, 0, len(b.data)/8)
 	b.data = b.data[:0]
 }
