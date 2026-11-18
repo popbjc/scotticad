@@ -27,6 +27,14 @@ static id<MTLCommandQueue> gQueue = nil;
 static NSWindow *gWindow = nil;
 static MTKView *gView = nil;
 
+// The current frame, between sc_frame_begin and sc_frame_end.
+static id<CAMetalDrawable> gDrawable = nil;
+static id<MTLCommandBuffer> gCmdBuf = nil;
+static id<MTLRenderCommandEncoder> gEnc = nil;
+static id<MTLSamplerState> gSampler = nil;
+static int gDrawW = 0;
+static int gDrawH = 0;
+
 @interface SCAppDelegate : NSObject <NSApplicationDelegate, NSWindowDelegate, MTKViewDelegate>
 @end
 
@@ -112,25 +120,9 @@ static MTKView *gView = nil;
 }
 
 - (void)drawInMTKView:(MTKView *)view {
-	goDraw(); // may set this frame's clear colour through sc_clear
-
-	id<CAMetalDrawable> drawable = view.currentDrawable;
-	if (drawable == nil) {
-		return;
-	}
-	MTLRenderPassDescriptor *rp = view.currentRenderPassDescriptor;
-	if (rp == nil) {
-		return;
-	}
-	rp.colorAttachments[0].clearColor = MTLClearColorMake(gClear[0], gClear[1], gClear[2], gClear[3]);
-	rp.colorAttachments[0].loadAction = MTLLoadActionClear;
-	rp.colorAttachments[0].storeAction = MTLStoreActionStore;
-
-	id<MTLCommandBuffer> cb = [gQueue commandBuffer];
-	id<MTLRenderCommandEncoder> enc = [cb renderCommandEncoderWithDescriptor:rp];
-	[enc endEncoding];
-	[cb presentDrawable:drawable];
-	[cb commit];
+	// Go drives the frame: it opens the render pass with sc_frame_begin,
+	// draws, and presents with sc_frame_end.
+	goDraw();
 }
 
 @end
@@ -182,4 +174,239 @@ void sc_clear(double r, double g, double b, double a) {
 	gClear[1] = g;
 	gClear[2] = b;
 	gClear[3] = a;
+}
+
+// --- the Metal backend ------------------------------------------------------
+//
+// Objects the Go side holds are passed back and forth as uintptr_t: an integer
+// is outside cgo's pointer checks, and each object is owned by whoever holds
+// its handle until the matching *_free.
+
+int sc_device_ready(void) {
+	return (gDevice != nil && gQueue != nil) ? 1 : 0;
+}
+
+uintptr_t sc_pipeline_batch(const char *msl, const char *vs, const char *fs) {
+	if (gDevice == nil || msl == NULL || vs == NULL || fs == NULL) {
+		return 0;
+	}
+	NSError *err = nil;
+	NSString *src = [NSString stringWithUTF8String:msl];
+	id<MTLLibrary> lib = [gDevice newLibraryWithSource:src options:nil error:&err];
+	if (lib == nil) {
+		fprintf(stderr, "scotticad: Metal shader compile failed: %s\n",
+		        err ? [[err localizedDescription] UTF8String] : "unknown");
+		return 0;
+	}
+	id<MTLFunction> vfn = [lib newFunctionWithName:[NSString stringWithUTF8String:vs]];
+	id<MTLFunction> ffn = [lib newFunctionWithName:[NSString stringWithUTF8String:fs]];
+	if (vfn == nil || ffn == nil) {
+		fprintf(stderr, "scotticad: Metal shader %s/%s not found\n", vs, fs);
+		return 0;
+	}
+	MTLRenderPipelineDescriptor *d = [[MTLRenderPipelineDescriptor alloc] init];
+	d.vertexFunction = vfn;
+	d.fragmentFunction = ffn;
+	// the 2D batch's fixed vertex layout: float2 pos, float2 uv, float4 col
+	MTLRenderPipelineColorAttachmentDescriptor *ca = d.colorAttachments[0];
+	ca.pixelFormat = MTLPixelFormatBGRA8Unorm;
+	ca.blendingEnabled = YES;
+	ca.sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
+	ca.destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+	ca.sourceAlphaBlendFactor = MTLBlendFactorSourceAlpha;
+	ca.destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+	id<MTLRenderPipelineState> ps = [gDevice newRenderPipelineStateWithDescriptor:d error:&err];
+	if (ps == nil) {
+		fprintf(stderr, "scotticad: Metal pipeline failed: %s\n",
+		        err ? [[err localizedDescription] UTF8String] : "unknown");
+		return 0;
+	}
+	return (uintptr_t)(void *)ps;
+}
+
+void sc_pipeline_free(uintptr_t p) {
+	if (p != 0) {
+		[(id<MTLRenderPipelineState>)(void *)p release];
+	}
+}
+
+uintptr_t sc_buffer_new(size_t len) {
+	if (gDevice == nil || len == 0) {
+		return 0;
+	}
+	id<MTLBuffer> b = [gDevice newBufferWithLength:len options:MTLResourceStorageModeShared];
+	return (uintptr_t)(void *)b;
+}
+
+void sc_buffer_update(uintptr_t b, const void *data, size_t len) {
+	if (b == 0 || data == NULL || len == 0) {
+		return;
+	}
+	id<MTLBuffer> buf = (id<MTLBuffer>)(void *)b;
+	if (len > [buf length]) {
+		len = [buf length];
+	}
+	memcpy([buf contents], data, len);
+}
+
+void sc_buffer_free(uintptr_t b) {
+	if (b != 0) {
+		[(id<MTLBuffer>)(void *)b release];
+	}
+}
+
+uintptr_t sc_texture_rgba8(int w, int h) {
+	if (gDevice == nil || w <= 0 || h <= 0) {
+		return 0;
+	}
+	MTLTextureDescriptor *d = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
+	                                                                             width:(NSUInteger)w
+	                                                                            height:(NSUInteger)h
+	                                                                         mipmapped:NO];
+	d.usage = MTLTextureUsageShaderRead;
+	d.storageMode = MTLStorageModeShared;
+	id<MTLTexture> t = [gDevice newTextureWithDescriptor:d];
+	return (uintptr_t)(void *)t;
+}
+
+void sc_texture_update(uintptr_t t, const void *pix, int w, int h, int bytesPerRow) {
+	if (t == 0 || pix == NULL) {
+		return;
+	}
+	id<MTLTexture> tex = (id<MTLTexture>)(void *)t;
+	MTLRegion r = MTLRegionMake2D(0, 0, (NSUInteger)w, (NSUInteger)h);
+	[tex replaceRegion:r mipmapLevel:0 withBytes:pix bytesPerRow:(NSUInteger)bytesPerRow];
+}
+
+void sc_texture_free(uintptr_t t) {
+	if (t != 0) {
+		[(id<MTLTexture>)(void *)t release];
+	}
+}
+
+static id<MTLSamplerState> ensureSampler(void) {
+	if (gSampler == nil && gDevice != nil) {
+		MTLSamplerDescriptor *d = [[MTLSamplerDescriptor alloc] init];
+		d.minFilter = MTLSamplerMinMagFilterLinear;
+		d.magFilter = MTLSamplerMinMagFilterLinear;
+		d.sAddressMode = MTLSamplerAddressModeClampToEdge;
+		d.tAddressMode = MTLSamplerAddressModeClampToEdge;
+		gSampler = [gDevice newSamplerStateWithDescriptor:d];
+	}
+	return gSampler;
+}
+
+int sc_frame_begin(void) {
+	if (gView == nil || gQueue == nil) {
+		return 0;
+	}
+	gDrawable = [gView.currentDrawable retain];
+	if (gDrawable == nil) {
+		return 0;
+	}
+	MTLRenderPassDescriptor *rp = gView.currentRenderPassDescriptor;
+	if (rp == nil) {
+		[gDrawable release];
+		gDrawable = nil;
+		return 0;
+	}
+	MTLRenderPassColorAttachmentDescriptor *ca = rp.colorAttachments[0];
+	ca.clearColor = MTLClearColorMake(gClear[0], gClear[1], gClear[2], gClear[3]);
+	ca.loadAction = MTLLoadActionClear;
+	ca.storeAction = MTLStoreActionStore;
+
+	gCmdBuf = [gQueue commandBuffer];
+	gEnc = [gCmdBuf renderCommandEncoderWithDescriptor:rp];
+	if (gEnc == nil) {
+		[gDrawable release];
+		gDrawable = nil;
+		gCmdBuf = nil;
+		return 0;
+	}
+	CGSize ds = gView.drawableSize;
+	gDrawW = (int)ds.width;
+	gDrawH = (int)ds.height;
+	ensureSampler();
+	return 1;
+}
+
+void sc_frame_end(void) {
+	if (gEnc != nil) {
+		[gEnc endEncoding];
+		gEnc = nil;
+	}
+	if (gCmdBuf != nil) {
+		if (gDrawable != nil) {
+			[gCmdBuf presentDrawable:gDrawable];
+		}
+		[gCmdBuf commit];
+		gCmdBuf = nil;
+	}
+	if (gDrawable != nil) {
+		[gDrawable release];
+		gDrawable = nil;
+	}
+}
+
+void sc_draw_set_pipeline(uintptr_t p) {
+	if (gEnc == nil || p == 0) {
+		return;
+	}
+	[gEnc setRenderPipelineState:(id<MTLRenderPipelineState>)(void *)p];
+}
+
+void sc_draw_set_vertex_buffer(uintptr_t b) {
+	if (gEnc == nil || b == 0) {
+		return;
+	}
+	[gEnc setVertexBuffer:(id<MTLBuffer>)(void *)b offset:0 atIndex:0];
+}
+
+void sc_draw_set_texture(uintptr_t t) {
+	if (gEnc == nil) {
+		return;
+	}
+	[gEnc setFragmentTexture:(t == 0 ? nil : (id<MTLTexture>)(void *)t) atIndex:0];
+	[gEnc setFragmentSamplerState:ensureSampler() atIndex:0];
+}
+
+void sc_draw_set_screen(float w, float h) {
+	if (gEnc == nil) {
+		return;
+	}
+	float s[2] = {w, h};
+	[gEnc setVertexBytes:s length:sizeof(s) atIndex:1];
+}
+
+void sc_draw_scissor(int x, int y, int w, int h) {
+	if (gEnc == nil) {
+		return;
+	}
+	// clamp to the drawable, the way glScissor is given a rectangle already
+	// inside it
+	if (x < 0) { w += x; x = 0; }
+	if (y < 0) { h += y; y = 0; }
+	if (x > gDrawW) { x = gDrawW; }
+	if (y > gDrawH) { y = gDrawH; }
+	if (x + w > gDrawW) { w = gDrawW - x; }
+	if (y + h > gDrawH) { h = gDrawH - y; }
+	if (w < 0) { w = 0; }
+	if (h < 0) { h = 0; }
+	MTLScissorRect r = {(NSUInteger)x, (NSUInteger)y, (NSUInteger)w, (NSUInteger)h};
+	[gEnc setScissorRect:r];
+}
+
+void sc_draw_scissor_reset(void) {
+	if (gEnc == nil) {
+		return;
+	}
+	MTLScissorRect r = {0, 0, (NSUInteger)gDrawW, (NSUInteger)gDrawH};
+	[gEnc setScissorRect:r];
+}
+
+void sc_draw_vertices(int count) {
+	if (gEnc == nil || count <= 0) {
+		return;
+	}
+	[gEnc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:(NSUInteger)count];
 }
