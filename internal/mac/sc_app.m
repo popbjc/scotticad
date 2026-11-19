@@ -217,7 +217,9 @@ static int SCMods(NSEventModifierFlags flags) {
 
 static void SCPoint(NSView *view, NSEvent *event, double *x, double *y) {
 	NSPoint p = [view convertPoint:event.locationInWindow fromView:nil];
-	double scale = SCBackingScale();
+	// The interface scale, not the backing scale: it is what maps logical
+	// points to the physical pixels Go lays out in (see SCUpdateDrawable).
+	double scale = SCInterfaceScale();
 	*x = p.x * scale;
 	*y = (NSHeight(view.bounds) - p.y) * scale;
 }
@@ -333,7 +335,7 @@ static void SCPoint(NSView *view, NSEvent *event, double *x, double *y) {
 	if (copy == NULL) return NO;
 	memcpy(copy, [utf8 bytes], [utf8 length]); copy[[utf8 length]] = 0;
 	NSPoint p = [self convertPoint:sender.draggingLocation fromView:nil];
-	double scale = self.window.backingScaleFactor > 0 ? self.window.backingScaleFactor : 1;
+	double scale = SCInterfaceScale();
 	double x = p.x * scale, y = (NSHeight(self.bounds) - p.y) * scale;
 	goEventDrop(copy, x, y);
 	free(copy);
@@ -426,17 +428,21 @@ if (gDevice == nil) { fprintf(stderr, "scotticad: no Metal device available\n");
 	goEventCapture(1);
 }
 - (void)mtkView:(MTKView *)view drawableSizeWillChange:(CGSize)size {
-	goResize((int)size.width, (int)size.height, SCBackingScale());
+	goResize((int)size.width, (int)size.height, SCInterfaceScale());
 }
 - (void)drawInMTKView:(MTKView *)view { goDraw(); }
 @end
 
 static void SCUpdateDrawable(void) {
 	if (!gView || gView.autoResizeDrawable) return;
-	double scale = SCBackingScale();
+	// The drawable is the physical pixel space Go lays out in, so it follows
+	// the interface scale (--scale), exactly as a Linux window's pixel size
+	// is its logical size times the scale. The backing scale only matters
+	// when no --scale is given, and then the two are the same.
+	double scale = SCInterfaceScale();
 	CGSize size = gView.bounds.size;
 	gView.drawableSize = CGSizeMake(size.width * scale, size.height * scale);
-	goResize((int)gView.drawableSize.width, (int)gView.drawableSize.height, SCInterfaceScale());
+	goResize((int)gView.drawableSize.width, (int)gView.drawableSize.height, scale);
 }
 
 static int SCParseList(const char *s, char ***out) {
