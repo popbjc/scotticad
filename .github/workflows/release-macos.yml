@@ -20,9 +20,11 @@ env:
 jobs:
   # Tests and the build share one job: a macOS arm64 runner is scarce, and
   # one job needs one runner, where a separate test job would need a second
-  # one for the build (which is what kept failing to be acquired).
+  # one for the build (which is what kept failing to be acquired). macos-26
+  # is the current arm64 image; macos-15's arm64 pool kept cancelling us
+  # after fifteen minutes of queueing.
   build:
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,6 +39,68 @@ jobs:
         run: test "$(uname -m)" = arm64
       - name: Run tests
         run: make test
+      - name: Diagnose a failed render
+        if: failure()
+        run: |
+          if [ ! -x .venv/bin/python ]; then
+            python3 -m venv .venv
+            .venv/bin/python -m pip install --quiet --disable-pip-version-check pytest
+          fi
+          make scotticad || true
+          .venv/bin/python - <<'PY'
+          import base64, collections, struct, sys, zlib
+          sys.path.insert(0, "python")
+          from scotticad import launch
+
+          def read_png(data):
+              pos, idat, w, h, bpp = 8, b"", 0, 0, 4
+              while pos < len(data):
+                  n, kind = struct.unpack(">I4s", data[pos:pos + 8])
+                  chunk = data[pos + 8:pos + 8 + n]
+                  if kind == b"IHDR":
+                      w, h, depth, ctype = struct.unpack(">IIBB", chunk[:10])
+                      bpp = 3 if ctype == 2 else 4
+                  elif kind == b"IDAT":
+                      idat += chunk
+                  pos += 12 + n
+              raw, stride, rows, prev = zlib.decompress(idat), w * bpp, [], bytearray(w * bpp)
+              for y in range(h):
+                  f, line = raw[y * (stride + 1)], bytearray(raw[y * (stride + 1) + 1:(y + 1) * (stride + 1)])
+                  for i in range(stride):
+                      a = line[i - bpp] if i >= bpp else 0
+                      bb, cc = prev[i], prev[i - bpp] if i >= bpp else 0
+                      if f == 1: line[i] = (line[i] + a) & 255
+                      elif f == 2: line[i] = (line[i] + bb) & 255
+                      elif f == 3: line[i] = (line[i] + (a + bb) // 2) & 255
+                      elif f == 4:
+                          p = a + bb - cc
+                          pa, pb, pc = abs(p - a), abs(p - bb), abs(p - cc)
+                          line[i] = (line[i] + (a if pa <= pb and pa <= pc else bb if pb <= pc else cc)) & 255
+                  rows.append([tuple(line[x * bpp:x * bpp + 3]) for x in range(w)])
+                  prev = line
+              return w, h, rows
+
+          with launch(headless=True, width=1400, height=860) as cad:
+              box = cad.add_shape("box")
+              cad.set_bounds(min=[-20, -20, 0], max=[20, 20, 20], ids=[box])
+              hole = cad.add_shape("cylinder", hole=True)
+              cad.rotate("y", 90, ids=[hole])
+              cad.set_bounds(min=[-25, -4, 6], max=[25, 4, 14], ids=[hole])
+              part = cad.group(ids=[box, hole])
+              cad.set_color("#2f80ed", ids=[part])
+              cad.clear_selection()
+              cad.set_section(axis="z", at=10, keep="below")
+              for ortho, yaw, pitch in ((True, 0, 89.9), (False, 30, 70)):
+                  cad.set_camera(target=[0, 0, 10], yaw=yaw, pitch=pitch, dist=150, ortho=ortho)
+                  shot = cad.call("screenshot")
+                  w, h, rows = read_png(base64.b64decode(shot["png"]))
+                  print(f"--- ortho={ortho} window={shot['width']}x{shot['height']} dpi={shot['dpi']} png={w}x{h}")
+                  print("full:", collections.Counter(c for row in rows for c in row).most_common(8))
+                  cut = collections.Counter(rows[int(py * shot["dpi"])][int(px * shot["dpi"])]
+                                            for px, py in (cad.project(x, y, 10) for x in range(-14, 15) for y in range(-14, 15) if abs(y) >= 7))
+                  print("cut:", cut.most_common(8))
+                  print("window/viewport:", cad.ui_state()["window"], cad.ui_state()["viewport"])
+          PY
       - name: Detect signing credentials
         id: signing
         env:
