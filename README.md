@@ -297,10 +297,9 @@ The signed build is notarized and stapled before the release zip is created.
 
 ### Publishing with GitHub Actions
 
-The `macOS release` workflow runs the test suite on macOS, builds both Apple
-silicon and Intel versions, signs and notarizes them, then publishes the ZIPs
-and SHA-256 files to a GitHub Release. Update `VERSION`, commit the change,
-then push a matching tag such as `v0.2.0`:
+The `macOS release` workflow runs the test suite on Apple Silicon, builds an
+arm64 version, then publishes the ZIP and SHA-256 file to a GitHub Release.
+Update `VERSION`, commit the change, then push a matching tag such as `v0.2.0`:
 
 ```sh
 git tag v0.2.0
@@ -310,7 +309,7 @@ git push origin v0.2.0
 The tag must match `VERSION`. To publish from the Actions tab instead, run
 `macOS release` and enter an existing matching tag.
 
-Before publishing, add these repository Actions secrets:
+To sign and notarize the release, add these repository Actions secrets:
 
 - `APPLE_CERTIFICATE_P12_BASE64`: base64-encoded Developer ID Application `.p12`.
 - `APPLE_CERTIFICATE_PASSWORD`: password used to export the `.p12`.
@@ -319,8 +318,14 @@ Before publishing, add these repository Actions secrets:
 - `APPLE_NOTARY_ISSUER_ID`: App Store Connect issuer UUID.
 - `APPLE_NOTARY_KEY`: full contents of the App Store Connect `.p8` key.
 
-The workflow stops before publishing if any signing or notarization secret is
-missing.
+When every secret is set, the workflow signs and notarizes the app before
+packaging. When the secrets are absent, it publishes an unsigned test build
+instead and logs a warning; the first launch must be approved manually with
+**Control-click → Open**, or by removing the quarantine attribute:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/ScottiCAD.app
+```
 
 ---
 

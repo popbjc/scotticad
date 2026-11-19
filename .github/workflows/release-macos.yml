@@ -35,15 +35,7 @@ jobs:
 
   build:
     needs: test
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-15
-            architecture: arm64
-          - runner: macos-15-intel
-            architecture: x86_64
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -54,7 +46,10 @@ jobs:
           cache: true
       - name: Verify tag matches VERSION
         run: test "$RELEASE_TAG" = "v$(cat VERSION)"
-      - name: Check signing credentials
+      - name: Verify Apple Silicon runner
+        run: test "$(uname -m)" = arm64
+      - name: Detect signing credentials
+        id: signing
         env:
           APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -63,19 +58,16 @@ jobs:
           APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
           APPLE_NOTARY_KEY: ${{ secrets.APPLE_NOTARY_KEY }}
         run: |
-          for name in \
-            APPLE_CERTIFICATE_P12_BASE64 \
-            APPLE_CERTIFICATE_PASSWORD \
-            APPLE_SIGNING_IDENTITY \
-            APPLE_NOTARY_KEY_ID \
-            APPLE_NOTARY_ISSUER_ID \
-            APPLE_NOTARY_KEY; do
-            if [ -z "${!name}" ]; then
-              echo "::error::Missing required repository secret: $name"
-              exit 1
-            fi
-          done
+          if [ -n "$APPLE_CERTIFICATE_P12_BASE64" ] && [ -n "$APPLE_CERTIFICATE_PASSWORD" ] && \
+             [ -n "$APPLE_SIGNING_IDENTITY" ] && [ -n "$APPLE_NOTARY_KEY_ID" ] && \
+             [ -n "$APPLE_NOTARY_ISSUER_ID" ] && [ -n "$APPLE_NOTARY_KEY" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Apple signing/notarization secrets are not configured; publishing an unsigned test build."
+          fi
       - name: Import signing identity and configure notarization
+        if: steps.signing.outputs.enabled == 'true'
         env:
           APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -115,8 +107,14 @@ jobs:
           echo "SIGNING_KEYCHAIN=$keychain" >> "$GITHUB_ENV"
       - name: Build, sign, notarize, and package
         env:
+          SIGNING_ENABLED: ${{ steps.signing.outputs.enabled }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-        run: make release-macos SIGN_IDENTITY="$APPLE_SIGNING_IDENTITY" NOTARY_PROFILE=ScottiCAD
+        run: |
+          if [ "$SIGNING_ENABLED" = "true" ]; then
+            make release-macos SIGN_IDENTITY="$APPLE_SIGNING_IDENTITY" NOTARY_PROFILE=ScottiCAD
+          else
+            make release-macos
+          fi
       - name: Write checksum
         run: |
           for archive in dist/*.zip; do
@@ -124,7 +122,7 @@ jobs:
           done
       - uses: actions/upload-artifact@v4
         with:
-          name: macos-${{ matrix.architecture }}
+          name: macos-arm64
           path: dist/*
           if-no-files-found: error
           retention-days: 7
