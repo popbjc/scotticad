@@ -30,8 +30,10 @@ scotticad: check-macos
 	$(BUILD) -ldflags '$(LDFLAGS)' -o scotticad ./cmd/scotticad
 
 macos: check-macos
-	mkdir -p $(dir $(APP_EXEC))
+	mkdir -p $(dir $(APP_EXEC)) $(APP)/Contents/Resources
 	$(BUILD) -ldflags '$(LDFLAGS)' -o $(APP_EXEC) ./cmd/scotticad
+	$(GO) run ./cmd/mkappicon build/ScottiCAD.iconset
+	iconutil -c icns --output $(APP)/Contents/Resources/ScottiCAD.icns build/ScottiCAD.iconset
 	sed 's/@VERSION@/$(VERSION)/g' packaging/macos/Info.plist > $(APP)/Contents/Info.plist
 
 examples: scotticad
@@ -65,11 +67,12 @@ sign-macos: macos
 
 notarize-macos: sign-macos
 	@test -n "$(NOTARY_PROFILE)" || { echo "Set NOTARY_PROFILE to a configured notarytool keychain profile." >&2; exit 1; }
-	mkdir -p dist
-	ditto -c -k --sequesterRsrc --keepParent "$(APP)" dist/.scotticad-notarize.zip
-	xcrun notarytool submit dist/.scotticad-notarize.zip --keychain-profile "$(NOTARY_PROFILE)" --wait
+	@set -e; \
+	tmpdir=$$(mktemp -d); \
+	trap 'rm -rf "$$tmpdir"' EXIT; \
+	ditto -c -k --sequesterRsrc --keepParent "$(APP)" "$$tmpdir/ScottiCAD.zip"; \
+	xcrun notarytool submit "$$tmpdir/ScottiCAD.zip" --keychain-profile "$(NOTARY_PROFILE)" --wait; \
 	xcrun stapler staple "$(APP)"
-	rm -f dist/.scotticad-notarize.zip
 
 release: release-macos
 
