@@ -12,11 +12,6 @@ const meshMSL = `
 #include <metal_stdlib>
 using namespace metal;
 
-struct MeshIn {
-	float3 pos [[attribute(0)]];
-	float3 normal [[attribute(1)]];
-	float3 color [[attribute(2)]];
-};
 struct MeshOut {
 	float4 position [[position]];
 	float3 normal;
@@ -24,15 +19,21 @@ struct MeshOut {
 	float3 world;
 };
 float modGL(float x, float y) { return x - y * floor(x / y); }
-vertex MeshOut vs_mesh(uint vid [[vertex_id]], const device MeshIn *verts [[buffer(0)]],
+// Vertices are interleaved pos3+normal3+color3 (nine floats, 36 bytes): a
+// float3 in MSL is 16-byte aligned, so a device MeshIn struct would stride
+// differently from the packed data. Read the raw floats instead.
+vertex MeshOut vs_mesh(uint vid [[vertex_id]], const device float *verts [[buffer(0)]],
 	constant float4x4 &uVP [[buffer(1)]], constant float4x4 &uModel [[buffer(2)]],
 	constant float4x4 &uNormal [[buffer(3)]]) {
-	MeshIn v = verts[vid];
-	float4 world = uModel * float4(v.pos, 1.0);
+	uint b = vid * 9u;
+	float3 pos = float3(verts[b], verts[b + 1u], verts[b + 2u]);
+	float3 nrm = float3(verts[b + 3u], verts[b + 4u], verts[b + 5u]);
+	float3 col = float3(verts[b + 6u], verts[b + 7u], verts[b + 8u]);
+	float4 world = uModel * float4(pos, 1.0);
 	MeshOut o;
 	o.position = uVP * world;
-	o.normal = (uNormal * float4(v.normal, 0.0)).xyz;
-	o.color = v.color;
+	o.normal = (uNormal * float4(nrm, 0.0)).xyz;
+	o.color = col;
 	o.world = world.xyz;
 	return o;
 }
@@ -73,19 +74,22 @@ fragment float4 fs_mesh(MeshOut in [[stage_in]],
 const lineMSL = `
 #include <metal_stdlib>
 using namespace metal;
-struct LineIn { float3 pos [[attribute(0)]]; float4 color [[attribute(1)]]; };
 struct LineOut {
 	float4 position [[position]];
 	float4 color;
 	float3 world;
 };
-vertex LineOut vs_line(uint vid [[vertex_id]], const device LineIn *verts [[buffer(0)]],
+// Vertices are interleaved pos3+color4 (seven floats, 28 bytes); for the
+// same reason as vs_mesh, read the raw floats.
+vertex LineOut vs_line(uint vid [[vertex_id]], const device float *verts [[buffer(0)]],
 	constant float4x4 &uVP [[buffer(1)]], constant float4x4 &uModel [[buffer(2)]]) {
-	LineIn v = verts[vid];
-	float4 world = uModel * float4(v.pos, 1.0);
+	uint b = vid * 7u;
+	float3 pos = float3(verts[b], verts[b + 1u], verts[b + 2u]);
+	float4 col = float4(verts[b + 3u], verts[b + 4u], verts[b + 5u], verts[b + 6u]);
+	float4 world = uModel * float4(pos, 1.0);
 	LineOut o;
 	o.position = uVP * world;
-	o.color = v.color;
+	o.color = col;
 	o.world = world.xyz;
 	return o;
 }
@@ -103,9 +107,12 @@ const planeMSL = `
 #include <metal_stdlib>
 using namespace metal;
 struct PlaneOut { float4 position [[position]]; float2 uv; };
-vertex PlaneOut vs_plane(uint vid [[vertex_id]], const device float3 *verts [[buffer(0)]],
+// Vertices are packed float3 (three floats, 12 bytes); a device float3*
+// would stride 16, so read the raw floats.
+vertex PlaneOut vs_plane(uint vid [[vertex_id]], const device float *verts [[buffer(0)]],
 	constant float4x4 &uVP [[buffer(1)]], constant float4 &uRect [[buffer(2)]]) {
-	float3 p = verts[vid];
+	uint b = vid * 3u;
+	float3 p = float3(verts[b], verts[b + 1u], verts[b + 2u]);
 	PlaneOut o;
 	o.position = uVP * float4(p, 1.0);
 	o.uv = float2((p.x - uRect.x) / uRect.z, 1.0 - (p.y - uRect.y) / uRect.w);
