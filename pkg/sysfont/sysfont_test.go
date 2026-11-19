@@ -15,9 +15,17 @@ func TestFindAndList(t *testing.T) {
 		t.Skip("the Windows Fonts folder isn't redirectable")
 	}
 	home := t.TempDir()
+	t.Setenv("HOME", home)
 	t.Setenv("XDG_DATA_HOME", filepath.Join(home, "data"))
 	t.Setenv("XDG_DATA_DIRS", filepath.Join(home, "none"))
-	sub := filepath.Join(home, "data", "fonts", "truetype", "acme")
+	// the folder the platform searches first, so the walk sees these files,
+	// and a folder every install has, so Dirs can be checked against it
+	first, sys := filepath.Join(home, "data", "fonts"), "/usr/share/fonts"
+	sub := filepath.Join(first, "truetype", "acme")
+	if runtime.GOOS == "darwin" {
+		first, sys = filepath.Join(home, "Library", "Fonts"), "/System/Library/Fonts"
+		sub = filepath.Join(first, "acme")
+	}
 	if err := os.MkdirAll(sub, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +45,7 @@ func TestFindAndList(t *testing.T) {
 	if len(l) < 2 || !contains(l, "AcmeMono.otf") || contains(l, "notes.txt") {
 		t.Errorf("List: %v", l)
 	}
-	if d := Dirs(); d[0] != filepath.Join(home, "data", "fonts") || !contains(d, "/usr/share/fonts") {
+	if d := Dirs(); d[0] != first || !contains(d, sys) {
 		t.Errorf("Dirs: %v", d)
 	}
 }

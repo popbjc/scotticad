@@ -107,6 +107,28 @@ func (t *insideTest) cast(g *axisGrid, p Vec3) (winding int, near bool) {
 		wa := bx*cy - by*cx // opposite a
 		wb := cx*ay - cy*ax // opposite b
 		wc := ax*by - ay*bx // opposite c
+		// The determinants are rounded, so a point exactly on an edge (a
+		// ray through the edge two triangles share) comes out a few ulps
+		// off zero, and the exact-zero rule below would count it for
+		// neither triangle or both. The error is a few ulps of m*m, the
+		// size of the products; snap anything that small to zero.
+		m := math.Max(math.Max(math.Abs(ax), math.Abs(ay)), math.Max(math.Abs(bx), math.Abs(by)))
+		if cx2, cy2 := math.Abs(cx), math.Abs(cy); cx2 > m {
+			m = cx2
+		} else if cy2 > m {
+			m = cy2
+		}
+		if eps := m * m * 1e-12; eps > 0 {
+			if math.Abs(wa) <= eps {
+				wa = 0
+			}
+			if math.Abs(wb) <= eps {
+				wb = 0
+			}
+			if math.Abs(wc) <= eps {
+				wc = 0
+			}
+		}
 		area := wa + wb + wc
 		if area == 0 {
 			continue

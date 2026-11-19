@@ -639,14 +639,14 @@ void sc_use_program(uintptr_t h) {
 	[gProgram bindUniformData];
 }
 static SCUniform *SCGetUniform(int loc, SCUniform *out) {
-	if (!gProgram || loc < 0 || loc >= (int)[gProgram.uniforms count]) return NULL;
-	[[gProgram.uniforms objectAtIndex:(NSUInteger)loc] getValue:out];
+	if (!gProgram || loc < 0 || loc >= (int)[gProgram->uniforms count]) return NULL;
+	[[gProgram->uniforms objectAtIndex:(NSUInteger)loc] getValue:out];
 	return out;
 }
 static void SCSetUniform(int loc, const void *value, size_t n) {
 	SCUniform u; if (!SCGetUniform(loc, &u) || u.size <= 0 || !SCEnsureEncoder()) return;
 	NSString *key = [NSString stringWithFormat:@"%d:%d", u.stage, u.index];
-	NSMutableData *data = [gProgram.uniformData objectForKey:key];
+	NSMutableData *data = [gProgram->uniformData objectForKey:key];
 	if (!data || u.offset < 0 || (NSUInteger)u.offset + n > [data length]) return;
 	memcpy((char *)[data mutableBytes] + u.offset, value, MIN(n, (size_t)u.size));
 	if (u.stage == 0) [gEnc setVertexBytes:[data bytes] length:[data length] atIndex:(NSUInteger)u.index];
