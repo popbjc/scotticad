@@ -48,9 +48,9 @@ jobs:
           fi
           make scotticad || true
           .venv/bin/python - <<'PY'
-          import base64, collections, struct, sys, zlib
+          import base64, struct, subprocess, sys, zlib
           sys.path.insert(0, "python")
-          from scotticad import launch
+          from scotticad import default_exe, launch
 
           def read_png(data):
               pos, idat, w, h, bpp = 8, b"", 0, 0, 4
@@ -80,7 +80,35 @@ jobs:
                   prev = line
               return w, h, rows
 
+          def shape_pixels(rows):
+              # the part's colour is #2f80ed: clearly blue and not the blue Z axis
+              # (which has no green). Shading keeps blue dominant.
+              return [(x, y) for y, row in enumerate(rows) for x, (r, g, b) in enumerate(row)
+                      if b > 120 and b - r > 60 and g > 60]
+
+          def where(rows, cad, p):
+              px, py = cad.project(*p)
+              got = "off" if not (0 <= int(py) < len(rows) and 0 <= int(px) < len(rows[0])) else rows[int(py)][int(px)]
+              pts = shape_pixels(rows)
+              if not pts:
+                  return f"project{p}=({px:.0f},{py:.0f}) colour={got} | shape=0"
+              xs = [q[0] for q in pts]; ys = [q[1] for q in pts]
+              return (f"project{p}=({px:.0f},{py:.0f}) colour={got} | shape={len(pts)} "
+                      f"centroid=({sum(xs)/len(xs):.0f},{sum(ys)/len(ys):.0f}) "
+                      f"bbox=x[{min(xs)},{max(xs)}] y[{min(ys)},{max(ys)}]")
+
           with launch(headless=True, width=1400, height=860) as cad:
+              print("=== a plain blue box at the home view (is the mesh pipeline drawing at all?) ===")
+              box = cad.add_shape("box")
+              cad.set_color("#2f80ed", ids=[box])
+              cad.clear_selection()
+              cad.home_view()
+              shot = cad.call("screenshot")
+              _, _, rows = read_png(base64.b64decode(shot["png"]))
+              print("plain box:", where(rows, cad, [0, 0, 0]))
+
+              print("=== the section cut test's part ===")
+              cad.new_design()
               box = cad.add_shape("box")
               cad.set_bounds(min=[-20, -20, 0], max=[20, 20, 20], ids=[box])
               hole = cad.add_shape("cylinder", hole=True)
@@ -89,17 +117,35 @@ jobs:
               part = cad.group(ids=[box, hole])
               cad.set_color("#2f80ed", ids=[part])
               cad.clear_selection()
-              cad.set_section(axis="z", at=10, keep="below")
-              for ortho, yaw, pitch in ((True, 0, 89.9), (False, 30, 70)):
-                  cad.set_camera(target=[0, 0, 10], yaw=yaw, pitch=pitch, dist=150, ortho=ortho)
-                  shot = cad.call("screenshot")
-                  w, h, rows = read_png(base64.b64decode(shot["png"]))
-                  print(f"--- ortho={ortho} window={shot['width']}x{shot['height']} dpi={shot['dpi']} png={w}x{h}")
-                  print("full:", collections.Counter(c for row in rows for c in row).most_common(8))
-                  cut = collections.Counter(rows[int(py * shot["dpi"])][int(px * shot["dpi"])]
-                                            for px, py in (cad.project(x, y, 10) for x in range(-14, 15) for y in range(-14, 15) if abs(y) >= 7))
-                  print("cut:", cut.most_common(8))
-                  print("window/viewport:", cad.ui_state()["window"], cad.ui_state()["viewport"])
+              print("section off:", cad.ui_state()["section"] if "section" in cad.ui_state() else "off")
+              cad.set_camera(target=[0, 0, 10], yaw=0, pitch=89.9, dist=150, ortho=True)
+              shot = cad.call("screenshot")
+              _, _, rows = read_png(base64.b64decode(shot["png"]))
+              print("no section, top-down:", where(rows, cad, [0, 0, 10]))
+              print("no section, corner:", where(rows, cad, [15, 15, 10]))
+
+              for section in (True, False):
+                  if section:
+                      cad.set_section(axis="z", at=10, keep="below")
+                  else:
+                      cad.set_section(on=False)
+                  for ortho, yaw, pitch in ((True, 0, 89.9), (False, 30, 70)):
+                      cad.set_camera(target=[0, 0, 10], yaw=yaw, pitch=pitch, dist=150, ortho=ortho)
+                      shot = cad.call("screenshot")
+                      w, h, rows = read_png(base64.b64decode(shot["png"]))
+                      print(f"section={section} ortho={ortho} window={shot['width']}x{shot['height']} png={w}x{h}")
+                      print("   ", where(rows, cad, [0, 0, 10]))
+                      print("   ", where(rows, cad, [12, 12, 10]))
+
+          print("=== start_api: does 'scotticad --api 127.0.0.1:0 --headless' print its line? ===")
+          for i in range(3):
+              p = subprocess.Popen([default_exe(), "--api", "127.0.0.1:0", "--headless"],
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+              line = p.stdout.readline()
+              print(f"try{i}: first={line!r} rc={p.poll()}")
+              if not line.startswith("SCOTTICAD_API "):
+                  print("   stderr:", (p.stderr.read() or "")[:1500])
+              p.kill()
           PY
       - name: Detect signing credentials
         id: signing
