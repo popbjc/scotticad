@@ -355,7 +355,10 @@ if (gDevice == nil) { fprintf(stderr, "scotticad: no Metal device available\n");
 	if (gQueue == nil) { fprintf(stderr, "scotticad: cannot create Metal command queue\n"); [NSApp terminate:nil]; return; }
 	gFrameSemaphore = dispatch_semaphore_create(3);
 	gBuffers = [[NSMutableSet alloc] init];
-	NSScreen *screen = [NSScreen mainScreen];
+	// A visible window is clamped to the screen so it can be used; a hidden
+	// one (automated tests) keeps exactly the size asked for, whatever the
+	// display is, or the laid-out controls don't match the test's window.
+	NSScreen *screen = gVisible ? [NSScreen mainScreen] : nil;
 	if (screen != nil) {
 		NSRect visible = screen.visibleFrame;
 		gW = MIN(gW, MAX(1, (int)visible.size.width - 80));
