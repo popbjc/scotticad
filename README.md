@@ -295,6 +295,33 @@ make release-macos SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" 
 
 The signed build is notarized and stapled before the release zip is created.
 
+### Publishing with GitHub Actions
+
+The `macOS release` workflow runs the test suite on macOS, builds both Apple
+silicon and Intel versions, signs and notarizes them, then publishes the ZIPs
+and SHA-256 files to a GitHub Release. Update `VERSION`, commit the change,
+then push a matching tag such as `v0.2.0`:
+
+```sh
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+The tag must match `VERSION`. To publish from the Actions tab instead, run
+`macOS release` and enter an existing matching tag.
+
+Before publishing, add these repository Actions secrets:
+
+- `APPLE_CERTIFICATE_P12_BASE64`: base64-encoded Developer ID Application `.p12`.
+- `APPLE_CERTIFICATE_PASSWORD`: password used to export the `.p12`.
+- `APPLE_SIGNING_IDENTITY`: full identity, for example `Developer ID Application: Your Name (TEAMID)`.
+- `APPLE_NOTARY_KEY_ID`: App Store Connect API key ID.
+- `APPLE_NOTARY_ISSUER_ID`: App Store Connect issuer UUID.
+- `APPLE_NOTARY_KEY`: full contents of the App Store Connect `.p8` key.
+
+The workflow stops before publishing if any signing or notarization secret is
+missing.
+
 ---
 
 ## Contributing
