@@ -11,12 +11,21 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime"
 
 	"github.com/scotticad/scotticad"
 	"github.com/scotticad/scotticad/pkg/app"
 	"github.com/scotticad/scotticad/pkg/mcp"
 	"github.com/scotticad/scotticad/pkg/window"
 )
+
+func init() {
+	// Cocoa requires the window and the app object to be created on the
+	// process's main thread. The runtime may move the main goroutine to
+	// another thread (asynchronous preemption) before main runs, so pin it
+	// here, before any flag parsing or setup, not later in window.New.
+	runtime.LockOSThread()
+}
 
 func main() {
 	api := flag.String("api", "", "serve the automation API on this address (host:port; port 0 picks one)")
